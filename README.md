@@ -93,6 +93,21 @@ from the `ec2-user`, this is handy for debugging purposes:
 `ssh local-ip-of-running-compute node`.  
 Use sinfo to see the current list of running compute nodes.
 
+### Staging input and reference data
+You will likely need to download your input data and software.  
+Ensure that inputs are accessible to all nodes by placing it in the `${SHARED_DIR}` folder.  
+This is:
+  * `/efs` if using the efs configuration on `tothill` or `umccr_dev`
+  * `/fsx` if using the fsx configuration on `umccr_dev_fsx`
+  
+By default you will have read-only access to the s3 buckets.  
+Use `sbatch --wrap "aws s3 sync s3://<bucket_path> "${SHARED_DIR}/local_path"` to download data
+into the shared file system.  
+
+> Please run the sync commands on a compute node, see 'Using slurm' below for more info.
+> Compute nodes have a much higher bandwidth than the master nodes, hence why this command
+> is placed inside the sbatch script. 
+
 ### Using slurm
 See [sbatch guide][sbatch_guide] for more information
 Example batch script file
@@ -105,13 +120,6 @@ Example batch script file
 echo 'Foo'
 docker run --rm hello-world
 ```
-
-If you are submitting a job that requires a file that is exclusively on one node,
-you may consider using [sbcast][sbcast_guide] parameter to ensure that the file is
-copied to the worker node. Alternatively place the file inside a location that is shared
-by both the submission and execution node. 
-  * `/efs` if using the efs configuration on `tothill` or `umccr_dev`
-  * `/fsx` if using the fsx configuration on `umccr_dev_fsx`
 
 #### Legacy HPC compatible commands 
 
@@ -166,15 +174,10 @@ This means that all compute nodes have access to the same FS and don't necessari
 However, that also means the data put into EFS remains available (and chargeable) as long as the cluster remains. 
 So data will have to be cleaned up manually after it fulfilled it's purpose.
 
-One can also specify to use an `fsx lustre` filesystem. This will be faster but more expensive for most use cases.
+One can also specify to use an `fsx lustre` filesystem with the `umccr_fsx` config. This will be faster but more expensive for most use cases.
 
 Both EFS and FSX systems are purged on the deletion of the stack. Please ensure you have copied your data 
 you wish to save back to S3
-
-**Not yet implemented**
-> /mnt/refdata    (mapping s3://umccr-refdata-dev for all genomics reference data)
-> /mnt/data       (mapping to s3://umccr-temp-dev for input datasets)
-> Those mount points are subject to change, this is a work in progress that requires human consensus.
 
 ### Accessing private GitHub repos.
 We have a public/private key pair for accessing our GitHub repos,
@@ -207,6 +210,31 @@ The following worklows are working examples you can run through to see AWS Paral
 > Not this is not currently a working example due to a novel failure
 
 [bcbio variant calling example](working_examples/bcbio/bcbio-nextgen.md)
+
+## Uploading data back to s3
+
+By default, parallel cluster does not have write access to s3 buckets.  
+A workaround is taking your short-term local SSO credentials and importing them into parallel cluster.
+
+To do this you must have the following:
+1. Logged in to AWS on your local computer via sso
+2. Have your parallel cluster environment activated, OR at least have `aws2-wrap` in your PATH
+3. Have the `ssm_run` function sourced from [this GitHub repo](alexiswl_bashrc)  
+
+From your local computer run:
+```
+export_env_vars="$(aws2-wrap --profile "${AWS_PROFILE}" --export | \
+                   sed 's/export //g' | \
+                   tr '\n' ',')"
+
+echo " sbatch --export \"${export_env_vars},ALL\" --wrap \"aws s3 sync /work/outputs/ s3://<bucket_path>\" | \
+ ssm_run --instance-id="<master_name>"
+```
+
+> The space before the sbatch is for security reasons.  
+> Be aware you are running a command on a shared parallel cluster with your personal access tokens.  
+> By prefixing the command with a space, this prevents the tokens being exposed in the ec2-user's bash history.        
+> Please note this is not foolproof method. 
 
 ## Troubleshooting
 
@@ -253,3 +281,4 @@ Ensure you're setting `--cluster-template` correctly and pointing to the right c
 [sbcast_guide]: https://slurm.schedmd.com/sbcast.html
 [cromshell_repo]: https://github.com/broadinstitute/cromshell
 [aws_doesnt_support_pip_bug]: https://github.com/aws/aws-cli/issues/4947
+[alexiswl_bashrc]: https://github.com/alexiswl/bashrc/
