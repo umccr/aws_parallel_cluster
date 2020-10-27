@@ -120,6 +120,9 @@ change_shared_permissions() {
   chmod 1777 "${SHARED_FILESYSTEM_MOUNT}"
 }
 
+### GLOBALS
+RELEASE_VERSION="__VERSION__"  # Currently unused
+
 # Runtime installations and configurations
 # Processes to complete on ALL (master and compute) nodes at startup
 
