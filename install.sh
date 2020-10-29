@@ -16,14 +16,14 @@ echo_stderr() {
 }
 
 has_conda() {
-  if ! conda --version 2>/dev/null; then
+  if ! conda --version >/dev/null; then
     echo_stderr "Could find command 'conda'. Please ensure conda is installed before continuing"
     return 1
   fi
 }
 
 has_jq() {
-  if ! jq --version 2>/dev/null; then
+  if ! jq --version >/dev/null; then
     echo_stderr "Could not find command 'jq'. Please ensure jq is installed before continuing"
     return 1
   fi
@@ -127,10 +127,16 @@ fi
 
 if ! has_conda_env; then
   echo_stderr "pcluster conda env does not exist. Creating"
-  conda env create --name "${PCLUSTER_CONDA_ENV_NAME}" --file "${CONDA_ENV_FILE}"
+  conda env create \
+    --quiet \
+    --name "${PCLUSTER_CONDA_ENV_NAME}" \
+    --file "${CONDA_ENV_FILE}"
 else
   echo_stderr "Found conda env 'pcluster' - running update"
-  conda env update --name "${PCLUSTER_CONDA_ENV_NAME}" --file "${CONDA_ENV_FILE}"
+  conda env update \
+    --quiet \
+    --name "${PCLUSTER_CONDA_ENV_NAME}" \
+    --file "${CONDA_ENV_FILE}"
 fi
 
 # Now we can obtain the env prefix which is where we will place our
@@ -149,3 +155,5 @@ rsync --archive "$(get_this_path)/pcluster.conf" "${conda_pcluster_env_prefix}/e
 
 echo_stderr "Adding scripts to \"${conda_pcluster_env_prefix}/bin\""
 rsync --archive "$(get_this_path)/bin/" "${conda_pcluster_env_prefix}/bin/"
+
+echo_stderr "Installation Complete!"

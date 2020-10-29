@@ -41,8 +41,8 @@ jobs:
       - name: Copy S3 files UMCCR DEV
         run: |
           # Install requirements
-          apt-get update
-          apt-get install -y \
+          sudo apt-get update
+          sudo apt-get install -y \
             awscli \
             jq \
             rsync
@@ -103,8 +103,8 @@ jobs:
       - name: Build project # This would actually build your project, using zip for an example artifact
         run: |
           # Install commands
-          apt-get update -y
-          apt-get install -y \
+          sudo apt-get update -y
+          sudo apt-get install -y \
             rsync \
             zip
           # Create release dir
@@ -115,14 +115,13 @@ jobs:
           # Add scripts
           rsync --archive bin/ release-${{ steps.get_tag_name.outputs.tag_name }}/bin/
           # Add conda-env yaml
-          cp conf/pcluster-env.yaml release-${{ steps.get_tag_name.outputs.tag_name }}/pcluster.env.yaml
+          cp conf/pcluster-env.yaml release-${{ steps.get_tag_name.outputs.tag_name }}/pcluster-env.yaml
           # Make install.sh an executable
           chmod +x install.sh
           # Add installation script
           mv install.sh release-${{ steps.get_tag_name.outputs.tag_name }}/install.sh
           # Create zip file
           zip -r release-${{ steps.get_tag_name.outputs.tag_name }}.zip release-${{ steps.get_tag_name.outputs.tag_name }}
-          ls -lsrth .
       # Create release zip file
       - name: Create Release
         id: create_release
@@ -133,7 +132,7 @@ jobs:
           tag_name: ${{ steps.get_tag_name.outputs.tag_name }}
           release_name: release-${{ steps.get_tag_name.outputs.tag_name }}
           draft: false
-          prerelease: ${{ steps.is_prerelease.outputs.prerelease == "true" }}
+          prerelease: ${{ steps.is_prerelease.outputs.prerelease == 'true' }}
       # Upload zip file as an asset
       - name: Upload Release Asset
         id: upload-release-asset
