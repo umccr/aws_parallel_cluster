@@ -1,4 +1,4 @@
-name: parallel_cluster
+name: pcluster
 channels:
   - anaconda
   - conda-forge
