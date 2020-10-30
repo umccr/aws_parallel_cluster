@@ -6,26 +6,34 @@ UMCCR's intent is to onboard users to AWS, first on HPC and then steadily **tran
 
 ## Cluster Admin
 
-### Setup
+### Prerequisites
 
-The [`conf/pcluster_client.env.yml` mentioned below][conda_conf] will setup `aws-parallelcluster` and other python dependencies on your python virtual environment. At UMCCR we typically use [Miniconda][miniconda], please set it up if you have not already before continuing.
+You must have [conda][miniconda] and [jq][jq_installation_page] before continuing 
 
-You can follow the official [docs][install_doc] or [this][blog_1] blog post (section `Setting up your client environment`) to set up the client requirements for parallel cluster.
+### Installation
 
-#### Conda env
-```bash
-conda env create \
-  --file conf/pcluster_client.env.yml \
-  --name pcluster
+Head to the releases page to download the latest release.  
+```
+# Download the latest release from the GitHub releases page
+wget https://github.com/umccr/aws_parallel_cluster/releases/download/latest/release-latest.zip
+# Unzip
+unzip release-latest.zip
+# Run the installer
+./release-latest/install.sh
+# Delete the zip and extracted files
+rm -rf release-latest.zip release-latest/
 ```
 
-> Updating env
-```bash
-git pull
-conda env update \
-  --file conf/pcluster_client.env.yml \
-  --name pcluster
+#### From source
+
+You can also clone this github directory and checkout out the latest tag and run the installation script
+
 ```
+git clone https://github.com/umccr/aws_parallel_cluster
+git checkout latest
+./install.sh
+```
+
 
 #### SSM Shortcuts
 This SSM shell function should be added to your `.bashrc` or equivalent:
@@ -282,3 +290,4 @@ Ensure you're setting `--cluster-template` correctly and pointing to the right c
 [cromshell_repo]: https://github.com/broadinstitute/cromshell
 [aws_doesnt_support_pip_bug]: https://github.com/aws/aws-cli/issues/4947
 [alexiswl_bashrc]: https://github.com/alexiswl/bashrc/
+[jq_installation_page]: https://stedolan.github.io/jq/download/

@@ -100,7 +100,7 @@ get_conda_env_prefix() {
 ###########
 
 PCLUSTER_CONDA_ENV_NAME="pcluster"
-CONDA_ENV_FILE="$(get_this_path)/pcluster-env.yaml"
+CONDA_ENV_FILE="$(get_this_path)/conf/pcluster-env.yaml"
 
 ############
 # RUN CHECKS
@@ -147,13 +147,52 @@ conda_pcluster_env_prefix="$(get_conda_env_prefix)"
 ##################
 
 echo_stderr "Adding pcluster.conf to \"${conda_pcluster_env_prefix}/etc/pcluster.conf\""
-rsync --archive "$(get_this_path)/pcluster.conf" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
+mkdir -p "${conda_pcluster_env_prefix}/etc/"
+cp "$(get_this_path)/conf/pcluster.conf" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
+
+# Ensure that if we're installing from the git repo, that we turn '__VERSION__' into 'latest'
+sed -i "s/__VERSION__/latest/g" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
 
 ###########
 # COPY BINS
 ###########
 
 echo_stderr "Adding scripts to \"${conda_pcluster_env_prefix}/bin\""
-rsync --archive "$(get_this_path)/bin/" "${conda_pcluster_env_prefix}/bin/"
+# Ensure all the scripts are executable
+chmod +x "$(get_this_path)/bin/*.sh"
+rsync --archive \
+  --include='*.sh' --exclude='*'\
+  "$(get_this_path)/bin/" "${conda_pcluster_env_prefix}/bin/"
 
 echo_stderr "Installation Complete!"
+
+################
+# PROMPT_COMMAND
+################
+
+: '
+Something a little fancy - shows pcluster version on ps1
+'
+
+mkdir -p "${conda_pcluster_env_prefix}/etc/conda/activate.d/"
+mkdir -p "${conda_pcluster_env_prefix}/etc/conda/deactivate.d/"
+
+# Activate
+{
+  echo -e "#!/usr/bin/env bash"
+  echo -e "if [[ ! -v PROMPT_COMMAND ]]; then"
+  echo -e "\t export PROMPT_COMMAND==\"printf ' __VERSION__ '\""
+  echo -e "else"
+  echo -e "\t export DO_NOT_UNSET_PROMPT_COMMAND=true"
+  echo -e "fi"
+} > "${conda_pcluster_env_prefix}/etc/conda/activate.d/prompt.sh"
+
+# Deactivate
+{
+  echo -e "#!/usr/bin/env bash"
+  echo -e "if [[ ! -v DO_NOT_UNSET_PROMPT_COMMAND ]]; then"
+  echo -e "\t unset PROMPT_COMMAND"
+  echo -e "else"
+  echo -e "\t unset DO_NOT_UNSET_PROMPT_COMMAND"
+  echo -e "fi"
+} > "${conda_pcluster_env_prefix}/etc/conda/deactivate.d/prompt.sh"
