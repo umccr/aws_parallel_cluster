@@ -602,7 +602,7 @@ GITHUB
 #################################################
 
 Not all GitHub repos have the parallel cluster public key
-The Public Key can be found under /parallel_cluster/dev/github_public_key
+The Public Key can be found under /parallel_cluster/main/github_public_key
 and should be added to the "Deploy Keys" of the repo with read-only access.
 '
 

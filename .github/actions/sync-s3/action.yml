@@ -11,8 +11,6 @@ description: "Upload appropriate files to the s3 bucket ready for launch"
 
 runs:
   using: "composite"
-  env:
-    S3_BUCKET_DIR_SSM_KEY: "${{ inputs.ssm_s3_pc_config_root }}"
   steps:
     - shell: bash
       run: |
@@ -23,7 +21,7 @@ runs:
           jq \
           rsync
         # Get config root with ssm-parameter key
-        s3_config_root="$(aws ssm get-parameter --name "${S3_BUCKET_DIR_SSM_KEY}" | {
+        s3_config_root="$(aws ssm get-parameter --name "${{ inputs.ssm_s3_pc_config_root }}" | {
                           jq --raw-output '.Parameter.Value'
                         })"
         # Now extend folder with the version/tag

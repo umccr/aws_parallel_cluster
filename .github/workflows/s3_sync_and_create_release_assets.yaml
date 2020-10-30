@@ -4,27 +4,28 @@ on:
     tags:
     - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
     - 'pre-v*'  # Push events to matching pre-v, i.e pre-v1.0, pre-v20.15.10
+    - 'latest'
 
 name: Create and Upload Release
 
 jobs:
   sync_s3:
-    name: Build and Upload Release Assets
+    name: Upload to s3
     runs-on: ubuntu-latest
     ## Only if we're on the main branch
     #if: github.event.base_ref == 'refs/heads/main'
     # Steps to run
     strategy:
       matrix:
-        access_creds:
-          - aws_access_key_id: ${{ secrets.UMCCR_DEV_AWS_ACCESS_KEY_ID }}
-            aws_secret_access_key: ${{ secrets.UMCCR_DEV_AWS_SECRET_ACCESS_KEY }}
-            role_to_assume: ${{ secrets.UMCCR_DEV_AWS_ROLE_TO_ASSUME }}
-            role_external_id: ${{ secrets.UMCCR_DEV_AWS_ROLE_EXTERNAL_ID }}
-          - aws_access_key_id: ${{ secrets.TOTHILL_AWS_ACCESS_KEY_ID }}
-            aws_secret_access_key: ${{ secrets.TOTHILL_AWS_SECRET_ACCESS_KEY }}
-            role_to_assume: ${{ secrets.TOTHILL_AWS_ROLE_TO_ASSUME }}
-            role_external_id: ${{ secrets.TOTHILL_AWS_ROLE_EXTERNAL_ID }}
+        include:
+          - aws_access_key_id: UMCCR_DEV_AWS_ACCESS_KEY_ID
+            aws_secret_access_key: UMCCR_DEV_AWS_SECRET_ACCESS_KEY
+            role_to_assume: UMCCR_DEV_AWS_ROLE_TO_ASSUME
+            role_external_id: UMCCR_DEV_AWS_ROLE_EXTERNAL_ID
+          - aws_access_key_id: TOTHILL_AWS_ACCESS_KEY_ID
+            aws_secret_access_key: TOTHILL_AWS_SECRET_ACCESS_KEY
+            role_to_assume: TOTHILL_AWS_ROLE_TO_ASSUME
+            role_external_id: TOTHILL_AWS_ROLE_EXTERNAL_ID
     steps:
       # Standard checkout step
       - name: Checkout code
@@ -37,21 +38,21 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ matrix.access_creds.aws_access_key_id }}
-          aws-secret-access-key: ${{ matrix.access_creds.aws_secret_access_key }}
+          aws-access-key-id: ${{ secrets[matrix.aws_access_key_id] }}
+          aws-secret-access-key: ${{ secrets[matrix.aws_secret_access_key] }}
           aws-region: ap-southeast-2
-          role-to-assume: ${{ matrix.access_creds.role_to_assume }}
-          role-external-id: ${{ matrix.access_creds.role_external_id }}
+          role-to-assume: ${{ secrets[matrix.role_to_assume] }}
+          role-external-id: ${{ secrets[matrix.role_external_id] }}
           role-duration-seconds: 1200
           #role-session-name: parallel_cluster
       # Copy files to s3
-      - name: Copy S3 files UMCCR DEV
+      - name: Copy S3 files
         uses: ./.github/actions/sync-s3
         with:
           tag_name: ${{ steps.get_tag_name.outputs.tag_name }}
-          S3_BUCKET_DIR_SSM_KEY: "parallel_cluster/main/s3_config_root"
+          ssm_s3_pc_config_root: "/parallel_cluster/main/s3_config_root"
   build:
-    name: Build and Upload Release Assts
+    name: Build Release Bundle
     runs-on: ubuntu-latest
     steps:
       # Standard checkout step
@@ -80,6 +81,7 @@ jobs:
           tag_name: ${{ steps.get_tag_name.outputs.tag_name }}
           release_name: release-${{ steps.get_tag_name.outputs.tag_name }}
           draft: false
+          body: ${{ github.event.head_commit.message }}
           prerelease: ${{ steps.is_prerelease.outputs.prerelease == 'true' }}
       # Upload zip file as an asset
       - name: Upload Release Asset
