@@ -1,0 +1,46 @@
+name: sync-s3
+inputs:
+  tag_name:
+    description: name of the release tag
+    required: true
+  ssm_s3_pc_config_root:
+    description: The ssm parameter key to the s3 bucket containing the configuration files
+    required: true
+
+description: "Upload appropriate files to the s3 bucket ready for launch"
+
+runs:
+  using: "composite"
+  env:
+    S3_BUCKET_DIR_SSM_KEY: "${{ inputs.ssm_s3_pc_config_root }}"
+  steps:
+    - shell: bash
+      run: |
+        # Install requirements
+        sudo apt-get update
+        sudo apt-get install -y \
+          awscli \
+          jq \
+          rsync
+        # Get config root with ssm-parameter key
+        s3_config_root="$(aws ssm get-parameter --name "${S3_BUCKET_DIR_SSM_KEY}" | {
+                          jq --raw-output '.Parameter.Value'
+                        })"
+        # Now extend folder with the version/tag
+        s3_config_version="${s3_config_root}/${{ inputs.tag_name }}"
+        # Initialise folder ready for upload
+        s3_sync_files_dir="release_dir"
+        mkdir -p "${s3_sync_files_dir}"
+        mkdir -p "${s3_sync_files_dir}/bootstrap/"
+        # Add instance configuration files
+        sed "s/__VERSION__/${{ inputs.tag_name }}/g" bootstrap/pre_install.sh > "${s3_sync_files_dir}/bootstrap/pre_install.sh"
+        sed "s/__VERSION__/${{ inputs.tag_name }}/g" bootstrap/post_install.sh > "${s3_sync_files_dir}/bootstrap/post_install.sh"
+        # Add folders to upload to s3
+        rsync --archive slurm/ "${s3_sync_files_dir}/slurm/"
+        rsync --archive toil/ "${s3_sync_files_dir}/toil/"
+        rsync --archive cromwell/ "${s3_sync_files_dir}/cromwell/"
+        rsync --archive bcbio/ "${s3_sync_files_dir}/bcbio/"
+        # Now run sync command
+        aws s3 sync "${s3_sync_files_dir}/" "${s3_config_version}/"
+        # Delete sync folder
+        rm -rf "${s3_sync_files_dir}/"
