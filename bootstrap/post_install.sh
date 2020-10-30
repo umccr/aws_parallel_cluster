@@ -564,7 +564,7 @@ check_ssm_parameter_exists() {
 
 write_ssm_parameter_to_file() {
   : '
-  Get an ssm parametert and write it to a file
+  Get an ssm parameter and write it to a file
   '
   # Inputs
   local ssm_parameter_key="$1" # Input Parameter Key
