@@ -647,7 +647,7 @@ RELEASE_VERSION="__VERSION__"
 # Globals - SSM Parameters
 S3_BUCKET_DIR_SSM_KEY="/parallel_cluster/main/s3_config_root"
 GITHUB_PRIVATE_KEY_SSM_KEY="/parallel_cluster/main/github_private_key"
-GITHUB_GIT_SSH_SSM_KEY="$/parallel_cluster/main/github_ssh"
+GITHUB_GIT_SSH_SSM_KEY="/parallel_cluster/main/github_ssh"
 
 # Globals - Miscell
 # Which timezone are we in
