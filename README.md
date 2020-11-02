@@ -63,7 +63,7 @@ $ ssm i-XXXXXXXXXXXXX
 ```shell
 $ CLUSTER_TEMPLATE="tothill"  # or umccr_dev 
 $ conda activate pcluster
-$ ./bin/start_cluster.sh \
+$ start_cluster.sh \
   <CLUSTER_NAME> 
   --cluster-template "${CLUSTER_TEMPLATE}"
 Beginning cluster creation for cluster: my-test-cluster
@@ -78,7 +78,7 @@ Log in with 'ssm i-XXXXXXXX'   <---- Master instance ID
 $ ssm i-XXXXXXXXXX
 
 # Delete the cluster when finished
-$ ./bin/stop_cluster.sh <CLUSTER_NAME>
+$ stop_cluster.sh <CLUSTER_NAME>
 ```
 
 ## Cluster Use
@@ -99,7 +99,7 @@ sbatch ...
 You can also log into a computer node from the master node,
 from the `ec2-user`, this is handy for debugging purposes:   
 `ssh local-ip-of-running-compute node`.  
-Use sinfo to see the current list of running compute nodes.
+Use `sinfo` to see the current list of running compute nodes.
 
 ### Staging input and reference data
 You will likely need to download your input data and software.  

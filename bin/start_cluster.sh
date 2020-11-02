@@ -82,18 +82,27 @@ while [ $# -gt 0 ]; do
           cluster_template="$2"
           shift 1
           ;;
+        --cluster-template=*)
+          cluster_template="${1#*=}"
+          ;;
         --config)
           config_file="$2"
           shift 1
+          ;;
+        --config=*)
+          config_file="${1#*=}"
           ;;
         --extra-parameters)
           extra_parameters="$2"
           shift 1
           ;;
+        --extra-parameters=*)
+          extra_parameters="${1#*=}"
+          ;;
         --no-rollback)
           no_rollback="true"
           ;;
-        --help)
+        -h|--help)
           display_help
           exit 0
           ;;

@@ -241,10 +241,10 @@ enable_mem_on_slurm() {
   sed -i "${include_cluster_line_num}i${SLURM_CONF_DEFAULT_MEM_PER_NODE_LINE}" "${SLURM_CONF_FILE}"
 
   # FIXME Hardcoded key-pair-vals should be put in a dict / json
-  sed -i '/^NodeName=compute-dy-c6g4xlarge/ s/$/ RealMemory=30000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
-  sed -i '/^NodeName=compute-dy-r6g4xlarge/ s/$/ RealMemory=126000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
-  sed -i '/^NodeName=copy-dy-m5nlarge/ s/$/ RealMemory=6000/' "${SLURM_COPY_PARTITION_CONFIG_FILE}"
-  sed -i '/^NodeName=long-dy-t4glarge/ s/$/ RealMemory=6000/' "${SLURM_LONG_PARTITION_CONFIG_FILE}"
+  sed -i '/^NodeName=compute-dy-c54xlarge/ s/$/ RealMemory=30000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
+  sed -i '/^NodeName=compute-dy-m54xlarge/ s/$/ RealMemory=62000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
+  sed -i '/^NodeName=copy-dy-m5large/ s/$/ RealMemory=6000/' "${SLURM_COPY_PARTITION_CONFIG_FILE}"
+  sed -i '/^NodeName=long-dy-t4large/ s/$/ RealMemory=6000/' "${SLURM_LONG_PARTITION_CONFIG_FILE}"
 
   # Replace SelectTypeParameters default (CR_CPU) with (CR_CPU_MEMORY)
   sed -i "/^SelectTypeParameters=/s/.*/SelectTypeParameters=${SLURM_SELECT_TYPE_PARAMETERS}/" "${SLURM_CONF_FILE}"

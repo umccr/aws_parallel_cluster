@@ -21,9 +21,9 @@ runs:
         # Create subdirs too, as present on GitHub
         mkdir -p "release-${{ inputs.tag_name }}/conf"
         mkdir -p "release-${{ inputs.tag_name }}/bin"
-        # Update version template for config and for
-        # pre-install and post-install scripts
+        # Update version template for config and for installation script
         sed "s/__VERSION__/${{ inputs.tag_name }}/g" "conf/pcluster.conf" > "release-${{ inputs.tag_name }}/conf/pcluster.conf"
+        sed "s/__VERSION__/${{ inputs.tag_name }}/g" "install.sh" > "release-${{ inputs.tag_name }}/install.sh"
         # Add scripts
         rsync --archive bin/ "release-${{ inputs.tag_name }}/bin/"
         # Add conda-env yaml
