@@ -26,7 +26,7 @@ display_help() {
     echo_stderr "Usage: $0 NAME_OF_YOUR_CLUSTER "
     echo_stderr "Additional Options:
                  --cluster-template tothill|umccr_dev|umccr_dev_fsx (default: tothill)
-                 --config /path/to/config (default: conf/config)
+                 --config /path/to/config (default: \"${CONDA_PREFIX}/etc/pcluster.conf\")
                  --extra-parameters (default: none)
                  --no-rollback (default: false, use for debugging purposes)"
 
@@ -82,18 +82,27 @@ while [ $# -gt 0 ]; do
           cluster_template="$2"
           shift 1
           ;;
+        --cluster-template=*)
+          cluster_template="${1#*=}"
+          ;;
         --config)
           config_file="$2"
           shift 1
+          ;;
+        --config=*)
+          config_file="${1#*=}"
           ;;
         --extra-parameters)
           extra_parameters="$2"
           shift 1
           ;;
+        --extra-parameters=*)
+          extra_parameters="${1#*=}"
+          ;;
         --no-rollback)
           no_rollback="true"
           ;;
-        --help)
+        -h|--help)
           display_help
           exit 0
           ;;
@@ -122,8 +131,8 @@ fi
 
 # Check config file, set config_file_arg param
 if [[ -z "${config_file}" ]]; then
-    echo_stderr "--config not specified, defaulting to conf/config"
-    config_file="conf/config"
+    echo_stderr "--config not specified, defaulting to \"${CONDA_PREFIX}/etc/pcluster.conf\""
+    config_file="${CONDA_PREFIX}/etc/pcluster.conf"
 fi
 
 if [[ ! -f "${config_file}" ]]; then

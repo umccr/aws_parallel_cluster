@@ -4,16 +4,28 @@ on:
     tags:
     - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
     - 'pre-v*'  # Push events to matching pre-v, i.e pre-v1.0, pre-v20.15.10
+    - 'latest'
 
 name: Create and Upload Release
 
 jobs:
-  build:
-    name: Build and Upload Release Assets
+  sync_s3:
+    name: Upload to s3
     runs-on: ubuntu-latest
     ## Only if we're on the main branch
     #if: github.event.base_ref == 'refs/heads/main'
     # Steps to run
+    strategy:
+      matrix:
+        include:
+          - aws_access_key_id: UMCCR_DEV_AWS_ACCESS_KEY_ID
+            aws_secret_access_key: UMCCR_DEV_AWS_SECRET_ACCESS_KEY
+            role_to_assume: UMCCR_DEV_AWS_ROLE_TO_ASSUME
+            role_external_id: UMCCR_DEV_AWS_ROLE_EXTERNAL_ID
+          - aws_access_key_id: TOTHILL_AWS_ACCESS_KEY_ID
+            aws_secret_access_key: TOTHILL_AWS_SECRET_ACCESS_KEY
+            role_to_assume: TOTHILL_AWS_ROLE_TO_ASSUME
+            role_external_id: TOTHILL_AWS_ROLE_EXTERNAL_ID
     steps:
       # Standard checkout step
       - name: Checkout code
@@ -22,107 +34,43 @@ jobs:
       - name: Get Tag Name
         id: get_tag_name
         run: echo "::set-output name=tag_name::$(basename ${{ github.ref }})"
-      # Is pre-release?
-      - name: Determine if this is a pre-release or not
-        id: is_prerelease
-        run: echo "::set-output name=prerelease::$(if [[ "${{ steps.get_tag_name.outputs.tag_name }}" == "pre"* || "${{ steps.get_tag_name.outputs.tag_name }}" == "dev" ]]; then echo true; else echo false; fi)"
-      # Setup aws credentials so we can sync s3 files (UMCCR_DEV)
-      - name: Configure AWS Credentials UMCCR DEV
+      # Setup aws credentials so we can sync s3 files
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.UMCCR_DEV_AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.UMCCR_DEV_AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets[matrix.aws_access_key_id] }}
+          aws-secret-access-key: ${{ secrets[matrix.aws_secret_access_key] }}
           aws-region: ap-southeast-2
-          role-to-assume: ${{ secrets.UMCCR_DEV_AWS_ROLE_TO_ASSUME }}
-          role-external-id: github_actions_user_umccr_aws_parallel_cluster
+          role-to-assume: ${{ secrets[matrix.role_to_assume] }}
+          role-external-id: ${{ secrets[matrix.role_external_id] }}
           role-duration-seconds: 1200
           #role-session-name: parallel_cluster
       # Copy files to s3
-      - name: Copy S3 files UMCCR DEV
-        run: |
-          # Install requirements
-          apt-get update
-          apt-get install -y \
-            awscli \
-            jq \
-            rsync
-          # Get config root with ssm-parameter key
-          # TODO place under actions as its own custom runner
-          S3_BUCKET_DIR_SSM_KEY="/parallel_cluster/main/s3_config_root"  # TODO
-          s3_config_root="$(aws ssm get-parameter --name "${S3_BUCKET_DIR_SSM_KEY}" | {
-                            jq --raw-output '.Parameter.Value'
-                          })"
-          # Now extend folder with the version/tag
-          s3_config_version="${s3_config_root}/${{ steps.get_tag_name.outputs.tag_name }}"
-          # Initialise folder ready for upload
-          mkdir s3_sync_files
-          # Add instance configuration files
-          sed "s/__VERSION__/${{ steps.get_tag_name.outputs.tag_name }}/g" bootstrap/pre_install.sh > s3_sync_files/pre_install.sh
-          sed "s/__VERSION__/${{ steps.get_tag_name.outputs.tag_name }}/g" bootstrap/post_install.sh > s3_sync_files/post_install.sh
-          # Add folders to upload to s3
-          rsync --archive slurm/ s3_sync_files/slurm/
-          rsync --archive toil/ s3_sync_files/toil/
-          rsync --archive cromwell/ s3_sync_files/cromwell/
-          rsync --archive bcbio/ s3_sync_files/bcbio/
-          # Now run sync command
-          aws s3 sync s3_sync_files/ "${s3_config_version}/"
-          # Delete sync folder
-          rm -rf s3_sync_files/
-      # Setup aws credentials so we can sync s3 files (tothill)
-      #- name: Configure AWS Credentials Tothill
-      #  uses: aws-actions/configure-aws-credentials@v1
-      #  with:
-      #    aws-access-key-id: ${{ secrets.TOTHILL_AWS_ACCESS_KEY_ID }}
-      #    aws-secret-access-key: ${{ secrets.TOTHILL_AWS_SECRET_ACCESS_KEY }}
-      #    aws-region: ap-southeast-2
-      ## Copy files to s3
-      #- name: Copy S3 files Tothill
-      #  run: |
-      #    # Get config root with ssm-parameter key
-      #    S3_BUCKET_DIR_SSM_KEY="/parallel_cluster/main/s3_config_root"
-      #    s3_config_root="$(aws ssm get-parameter --name "${S3_BUCKET_DIR_SSM_KEY}" | {
-      #                      jq --raw-output '.Parameter.Value'
-      #                    })"
-      #    # Now extend folder with the version/tag
-      #    s3_config_version="${s3_config_root}/${{ steps.get_tag_name.outputs.tag_name }}"
-      #    # Initialise folder ready for upload
-      #    mkdir s3_sync_files
-      #    # Add instance configuration files
-      #    sed "s/__VERSION__/${{ steps.get_tag_name.outputs.tag_name }}/g" bootstrap/pre_install.sh > s3_sync_files/pre_install.sh
-      #    sed "s/__VERSION__/${{ steps.get_tag_name.outputs.tag_name }}/g" bootstrap/post_install.sh > s3_sync_files/post_install.sh
-      #    # Add folders to upload to s3
-      #    rsync --archive slurm/ s3_sync_files/slurm/
-      #    rsync --archive toil/ s3_sync_files/toil/
-      #    rsync --archive cromwell/ s3_sync_files/cromwell/
-      #    rsync --archive bcbio/ s3_sync_files/bcbio/
-      #    # Now run sync command
-      #    aws s3 sync s3_sync_files/ "${s3_config_version}/"
-      #    # Delete sync folder
-      #    rm -rf s3_sync_files/
+      - name: Copy S3 files
+        uses: ./.github/actions/sync-s3
+        with:
+          tag_name: ${{ steps.get_tag_name.outputs.tag_name }}
+          ssm_s3_pc_config_root: "/parallel_cluster/main/s3_config_root"
+  build:
+    name: Build Release Bundle
+    runs-on: ubuntu-latest
+    steps:
+      # Standard checkout step
+      - name: Checkout code
+        uses: actions/checkout@v2
+      # Get tag name, from /ref/heads/<tag> to <tag>
+      - name: Get Tag Name
+        id: get_tag_name
+        run: echo "::set-output name=tag_name::$(basename ${{ github.ref }})"
+          # Is pre-release?
+      - name: Determine if this is a pre-release or not
+        id: is_prerelease
+        run: echo "::set-output name=prerelease::$(if [[ "${{ steps.get_tag_name.outputs.tag_name }}" == "pre"* || "${{ steps.get_tag_name.outputs.tag_name }}" == "dev" ]]; then echo true; else echo false; fi)"
       # Build project
       - name: Build project # This would actually build your project, using zip for an example artifact
-        run: |
-          # Install commands
-          apt-get update -y
-          apt-get install -y \
-            rsync \
-            zip
-          # Create release dir
-          mkdir release-${{ steps.get_tag_name.outputs.tag_name }}
-          # Update version template for config and for
-          # pre-install and post-install scripts
-          sed "s/__VERSION__/${{ steps.get_tag_name.outputs.tag_name }}/g" conf/pcluster.conf > release-${{ steps.get_tag_name.outputs.tag_name }}/config.yaml
-          # Add scripts
-          rsync --archive bin/ release-${{ steps.get_tag_name.outputs.tag_name }}/bin/
-          # Add conda-env yaml
-          cp conf/pcluster-env.yaml release-${{ steps.get_tag_name.outputs.tag_name }}/pcluster.env.yaml
-          # Make install.sh an executable
-          chmod +x install.sh
-          # Add installation script
-          mv install.sh release-${{ steps.get_tag_name.outputs.tag_name }}/install.sh
-          # Create zip file
-          zip -r release-${{ steps.get_tag_name.outputs.tag_name }}.zip release-${{ steps.get_tag_name.outputs.tag_name }}
-          ls -lsrth .
+        uses: ./.github/actions/build-release
+        with:
+          tag_name: ${{ steps.get_tag_name.outputs.tag_name }}
       # Create release zip file
       - name: Create Release
         id: create_release
@@ -133,7 +81,8 @@ jobs:
           tag_name: ${{ steps.get_tag_name.outputs.tag_name }}
           release_name: release-${{ steps.get_tag_name.outputs.tag_name }}
           draft: false
-          prerelease: ${{ steps.is_prerelease.outputs.prerelease == "true" }}
+          body: ${{ github.event.head_commit.message }}
+          prerelease: ${{ steps.is_prerelease.outputs.prerelease == 'true' }}
       # Upload zip file as an asset
       - name: Upload Release Asset
         id: upload-release-asset

@@ -52,8 +52,16 @@ REGION="ap-southeast-2"
 N_COLUMNS=4
 SEP=" "
 
+# Get clusters
+clusters="$(pcluster list -r "${REGION}")"
+
+if [[ -z "${clusters}" ]]; then
+  echo_stderr "No clusters were found, exiting"
+  exit
+fi
+
 # Get clusters as an array
-mapfile -t clusters_array <<< "$(pcluster list -r "${REGION}")"
+mapfile -t clusters_array <<< "${clusters}"
 
 # Initialise lines to print out
 lines=("Name Status Version MasterServer")

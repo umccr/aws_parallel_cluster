@@ -139,7 +139,7 @@ get_pc_s3_root() {
   s3_cluster_root="$(aws ssm get-parameter --name "${S3_BUCKET_DIR_SSM_KEY}" | {
                      jq --raw-output '.Parameter.Value'
                    })"
-  echo "${s3_cluster_root}"
+  echo "${s3_cluster_root}/${RELEASE_VERSION}"
 }
 
 get_rds_endpoint() {
@@ -227,21 +227,24 @@ enable_mem_on_slurm() {
     # However we lose around 800mb on average with overhead.
     # Take off 2GB to be safe
     # Workaround taken from https://github.com/aws/aws-parallelcluster/issues/1517#issuecomment-561775124
-    # Therefore compute-dy-c54xlarge becomes 30000 (Mb)
-    # And compute-dy-m54xlarge becomes 62000 (Mb)
-    # We also set the default memory to 2000 (Mb)
+    # c6g.4xlarge becomes 30 Gb
+    # r6g.4xlarge becomes 126 Gb
+    # m5n.large becomes 6 Gb
+    # t4g.large becomes 6 Gb
   '
   # Get line of INCLUDE_CLUSTER_LINE
   local include_cluster_line_num
   include_cluster_line_num=$(grep -n "${SLURM_CONF_INCLUDE_CLUSTER_LINE}" "${SLURM_CONF_FILE}" | {
-                             cut -d':' -f1
-                            })
+    cut -d':' -f1
+  })
   # Prepend with DefMemPerNode Line
   sed -i "${include_cluster_line_num}i${SLURM_CONF_DEFAULT_MEM_PER_NODE_LINE}" "${SLURM_CONF_FILE}"
 
   # FIXME Hardcoded key-pair-vals should be put in a dict / json
   sed -i '/^NodeName=compute-dy-c54xlarge/ s/$/ RealMemory=30000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
   sed -i '/^NodeName=compute-dy-m54xlarge/ s/$/ RealMemory=62000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
+  sed -i '/^NodeName=copy-dy-m5large/ s/$/ RealMemory=6000/' "${SLURM_COPY_PARTITION_CONFIG_FILE}"
+  sed -i '/^NodeName=long-dy-m5large/ s/$/ RealMemory=6000/' "${SLURM_LONG_PARTITION_CONFIG_FILE}"
 
   # Replace SelectTypeParameters default (CR_CPU) with (CR_CPU_MEMORY)
   sed -i "/^SelectTypeParameters=/s/.*/SelectTypeParameters=${SLURM_SELECT_TYPE_PARAMETERS}/" "${SLURM_CONF_FILE}"
@@ -400,7 +403,7 @@ create_start_cromwell_script() {
     echo -e "\t-Xmx\"${CROMWELL_MEM_MAX_HEAP_SIZE}\" \\"
     echo -e "\t-jar \"${CROMWELL_JAR_PATH}\" \\"
     echo -e "\t\tserver > \"/home/ec2-user/cromwell-server.log\" 2>&1 &"
-  } > "${CROMWELL_SERVER_START_SCRIPT_PATH}"
+  } >"${CROMWELL_SERVER_START_SCRIPT_PATH}"
 
   # Change executable permissions
   chmod +x "${CROMWELL_SERVER_START_SCRIPT_PATH}"
@@ -561,12 +564,12 @@ check_ssm_parameter_exists() {
 
 write_ssm_parameter_to_file() {
   : '
-  Get an ssm parametert and write it to a file
+  Get an ssm parameter and write it to a file
   '
   # Inputs
-  local ssm_parameter_key="$1"  # Input Parameter Key
-  local file_path="$2"  # Local path to write to
-  local secure_string="$3"  # Is the input parameter a secure string?
+  local ssm_parameter_key="$1" # Input Parameter Key
+  local file_path="$2"         # Local path to write to
+  local secure_string="$3"     # Is the input parameter a secure string?
 
   # Other local vars used
   local ssm_as_str
@@ -599,7 +602,7 @@ GITHUB
 #################################################
 
 Not all GitHub repos have the parallel cluster public key
-The Public Key can be found under /parallel_cluster/dev/github_public_key
+The Public Key can be found under /parallel_cluster/main/github_public_key
 and should be added to the "Deploy Keys" of the repo with read-only access.
 '
 
@@ -639,12 +642,12 @@ GLOBALS
 '
 
 # Globals
+RELEASE_VERSION="__VERSION__"
 
 # Globals - SSM Parameters
-SSM_PARAMETER_ROOT="/parallel_cluster/dev"
-S3_BUCKET_DIR_SSM_KEY="${SSM_PARAMETER_ROOT}/s3_config_root"
-GITHUB_PRIVATE_KEY_SSM_KEY="${SSM_PARAMETER_ROOT}/github_private_key"
-GITHUB_GIT_SSH_SSM_KEY="${SSM_PARAMETER_ROOT}/github_ssh"
+S3_BUCKET_DIR_SSM_KEY="/parallel_cluster/main/s3_config_root"
+GITHUB_PRIVATE_KEY_SSM_KEY="/parallel_cluster/main/github_private_key"
+GITHUB_GIT_SSH_SSM_KEY="/parallel_cluster/main/github_ssh"
 
 # Globals - Miscell
 # Which timezone are we in
@@ -668,7 +671,10 @@ fi
 # Globals - slurm
 # Slurm conf file we need to edit
 SLURM_CONF_FILE="/opt/slurm/etc/slurm.conf"
+# FIXME Iterate through a list instead
 SLURM_COMPUTE_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_compute_partition.conf"
+SLURM_COPY_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_copy_partition.conf"
+SLURM_LONG_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_long_partition.conf"
 SLURM_SINTERACTIVE_S3="$(get_pc_s3_root)/slurm/scripts/sinteractive.sh"
 SLURM_SINTERACTIVE_FILE_PATH="/opt/slurm/scripts/sinteractive"
 # If just CR_CPU, then slurm will only look at CPU
@@ -690,9 +696,9 @@ fi
 SLURM_DBD_CONF_FILE_S3="$(get_pc_s3_root)/slurm/conf/slurmdbd-template.conf"
 SLURM_DBD_CONF_FILE_PATH="/opt/slurm/etc/slurmdbd.conf"
 # S3 Password
-SLURM_DBD_SSM_KEY_PASSWD="/parallel_cluster/dev/slurm_rds_db_password"
+SLURM_DBD_SSM_KEY_PASSWD="/parallel_cluster/main/slurm_rds_db_password"
 # RDS Endpoint
-SLURM_DBD_SSM_KEY_ENDPOINT="/parallel_cluster/dev/slurm_rds_endpoint"
+SLURM_DBD_SSM_KEY_ENDPOINT="/parallel_cluster/main/slurm_rds_endpoint"
 
 # Globals - Cromwell
 CROMWELL_SLURM_CONFIG_FILE_PATH="/opt/cromwell/configs/slurm.conf"

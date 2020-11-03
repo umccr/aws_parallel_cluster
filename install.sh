@@ -16,14 +16,14 @@ echo_stderr() {
 }
 
 has_conda() {
-  if ! conda --version 2>/dev/null; then
+  if ! conda --version >/dev/null; then
     echo_stderr "Could find command 'conda'. Please ensure conda is installed before continuing"
     return 1
   fi
 }
 
 has_jq() {
-  if ! jq --version 2>/dev/null; then
+  if ! jq --version >/dev/null; then
     echo_stderr "Could not find command 'jq'. Please ensure jq is installed before continuing"
     return 1
   fi
@@ -50,9 +50,24 @@ get_this_path() {
   echo "${this_dir}"
 }
 
+_verlte() {
+  [ "$1" = "$(echo -e "$1\n$2" | sort -V | head -n1)" ]
+}
+
+_verlt() {
+  [ "$1" = "$2" ] && return 1 || verlte "$1" "$2"
+}
+
 ############
 # CONDA
 ############
+
+get_conda_version() {
+  local version
+  version="$(conda --version | cut -d' ' -f2)"
+
+  echo "${version}"
+}
 
 has_conda_env() {
   : '
@@ -95,12 +110,23 @@ get_conda_env_prefix() {
   echo "${conda_env_prefix}"
 }
 
+check_conda_version() {
+  : '
+  Make sure at the latest conda version
+  '
+  if ! _verlte "${REQUIRED_CONDA_VERSION}" "$(get_conda_version)"; then
+    echo_stderr "Your conda version is too old"
+    return 1
+  fi
+}
+
 ###########
 # GLOBALS
 ###########
 
 PCLUSTER_CONDA_ENV_NAME="pcluster"
-CONDA_ENV_FILE="$(get_this_path)/pcluster-env.yaml"
+CONDA_ENV_FILE="$(get_this_path)/conf/pcluster-env.yaml"
+REQUIRED_CONDA_VERSION="4.9.0"
 
 ############
 # RUN CHECKS
@@ -121,16 +147,27 @@ if ! has_jq; then
   exit 1
 fi
 
+if ! check_conda_version; then
+  echo_stderr "Please run 'conda update -n base conda'"
+  exit 1
+fi
+
 #########################
 # CREATE/UPDATE CONDA ENV
 #########################
 
 if ! has_conda_env; then
   echo_stderr "pcluster conda env does not exist. Creating"
-  conda env create --name "${PCLUSTER_CONDA_ENV_NAME}" --file "${CONDA_ENV_FILE}"
+  conda env create \
+    --quiet \
+    --name "${PCLUSTER_CONDA_ENV_NAME}" \
+    --file "${CONDA_ENV_FILE}"
 else
   echo_stderr "Found conda env 'pcluster' - running update"
-  conda env update --name "${PCLUSTER_CONDA_ENV_NAME}" --file "${CONDA_ENV_FILE}"
+  conda env update \
+    --quiet \
+    --name "${PCLUSTER_CONDA_ENV_NAME}" \
+    --file "${CONDA_ENV_FILE}"
 fi
 
 # Now we can obtain the env prefix which is where we will place our
@@ -141,11 +178,23 @@ conda_pcluster_env_prefix="$(get_conda_env_prefix)"
 ##################
 
 echo_stderr "Adding pcluster.conf to \"${conda_pcluster_env_prefix}/etc/pcluster.conf\""
-rsync --archive "$(get_this_path)/pcluster.conf" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
+mkdir -p "${conda_pcluster_env_prefix}/etc/"
+cp "$(get_this_path)/conf/pcluster.conf" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
+
+# Ensure that if we're installing from the git repo, that we turn '__VERSION__' into 'latest'
+sed -i "s/__VERSION__/latest/g" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
 
 ###########
 # COPY BINS
 ###########
 
 echo_stderr "Adding scripts to \"${conda_pcluster_env_prefix}/bin\""
-rsync --archive "$(get_this_path)/bin/" "${conda_pcluster_env_prefix}/bin/"
+# Ensure all the scripts are executable
+find "$(get_this_path)/bin/" -maxdepth 1 -type f -name "*.sh" -exec chmod +x {} \;
+
+# Copy over to conda env
+rsync --archive \
+  --include='*.sh' --exclude='*'\
+  "$(get_this_path)/bin/" "${conda_pcluster_env_prefix}/bin/"
+
+echo_stderr "Installation Complete!"
