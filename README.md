@@ -2,6 +2,41 @@
 
 [AWS Parallel cluster][aws_parallel_cluster] is a Cloud-HPC system designed to bring traditional HPC practices to the cloud.
 
+- [UMCCR's AWS Parallel Cluster](#umccrs-aws-parallel-cluster)
+  - [Cluster Admin](#cluster-admin)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+      - [From source](#from-source)
+      - [SSM Shortcuts](#ssm-shortcuts)
+    - [Running the cluster](#running-the-cluster)
+  - [Cluster Use](#cluster-use)
+    - [Logging into the master node](#logging-into-the-master-node)
+    - [Logging into a computer node](#logging-into-a-computer-node)
+    - [Staging input and reference data](#staging-input-and-reference-data)
+    - [Using slurm](#using-slurm)
+      - [Legacy HPC compatible commands](#legacy-hpc-compatible-commands)
+    - [Running through cromwell](#running-through-cromwell)
+      - [Logs and outputs](#logs-and-outputs)
+    - [Running through toil](#running-through-toil)
+    - [Installing new software on the cluster](#installing-new-software-on-the-cluster)
+    - [File System](#file-system)
+    - [Accessing private GitHub repos.](#accessing-private-github-repos)
+    - [Spot vs On Demand instances](#spot-vs-on-demand-instances)
+      - [compute](#compute)
+      - [copy](#copy)
+      - [long](#long)
+    - [Limitations](#limitations)
+  - [Some use cases](#some-use-cases)
+    - [Toil](#toil)
+    - [Cromwell](#cromwell)
+    - [bcbio](#bcbio)
+  - [Uploading data back to s3](#uploading-data-back-to-s3)
+  - [Troubleshooting](#troubleshooting)
+    - [Failed to build cluster](#failed-to-build-cluster)
+    - [It's taking a long time for my job to start](#its-taking-a-long-time-for-my-job-to-start)
+    - [Cannot log into AWS SSO whilst in pcluster env](#cannot-log-into-aws-sso-whilst-in-pcluster-env)
+    - [The vpc ID 'vpc-XXXX' does not exist](#the-vpc-id-vpc-xxxx-does-not-exist)
+
 UMCCR's intent is to onboard users to AWS, first on HPC and then steadily **transitioning to more cloud-native, efficient alternatives where suitable. This includes but is not limited to Illumina Access Platform (IAP).**
 
 ## Cluster Admin
@@ -194,6 +229,27 @@ We have a public/private key pair for accessing our GitHub repos,
 stored in AWS ssm parameters. If the repo of interest as this public key
 in the deploy keys section of the repo, you can clone it to any node using:   
 `git clone git@github.com:repo/path.git`
+
+### Spot vs On Demand instances
+Different partitions have different instance configurations.  
+They are described below along with their expected use cases:
+
+#### compute
+* Default partition
+* c5.4xlarge and m5.4xlarge instances available on this partition.
+* Spot instances - scheduler must be resilient to restarting jobs
+
+#### copy
+* Use `--partition=copy` to run commands through this partition
+* Currently running an m5.large, with the intention to move this to a higher network bandwidth but with low specs.  
+* Use for staging input and reference data and uploading output data.   
+* Uses spot instances, so use `--requeue` on your jobs to enable job restarts
+
+#### long
+* Use `--partition=long` to run commands through this partition
+* Currently running an m5.large, with the intention to move this to a higher network bandwidth but with reduced specs.
+* Is an 'ondemand' instances for jobs that CANNOT be restarted such as workflow schedulers.  
+
 
 ### Limitations
 
