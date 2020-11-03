@@ -12,7 +12,7 @@ You must have [conda][miniconda] and [jq][jq_installation_page] before continuin
 
 ### Installation
 
-Head to the releases page to download the latest release.  
+Head to the [releases](../../releases) page to download the latest release.  
 ```shell
 # Make sure conda is at the latest version
 conda update --name base conda
