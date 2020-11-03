@@ -1,4 +1,8 @@
-#!/bin/sh
+#!/bin/bash
+
+###########
+# FUNCTIONS
+###########
 
 echo_stderr(){
     # Write log to stderr
@@ -20,6 +24,14 @@ check_pcluster_version() {
   return "$?"
 }
 
+display_help() {
+    echo "Usage: $0 NAME_OF_YOUR_CLUSTER" >&2
+}
+
+########
+# CHECKS
+########
+
 if ! has_creds; then
     echo_stderr "Could not find credentials, please login to AWS before continuing"
     exit 1
@@ -31,14 +43,21 @@ if ! check_pcluster_version; then
   exit 1
 fi
 
-display_help() {
-    echo "Usage: $0 NAME_OF_YOUR_CLUSTER" >&2
-    exit 1
-}
-
-if [ "$1" ] ; then
-	pcluster delete "$1" --config conf/config
-    exit 0
+if [[ -n "$1" ]] ; then
+  cluster_name="$1"
 else
 	display_help
+	exit 1
 fi
+
+######
+# MAIN
+######
+
+# Delete cluster, point to config
+pcluster delete \
+  --config "${CONDA_PREFIX}/etc/pcluster.conf" \
+  "${cluster_name}"
+exit 0
+
+
