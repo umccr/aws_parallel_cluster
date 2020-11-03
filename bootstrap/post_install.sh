@@ -368,6 +368,19 @@ get_sinteractive_command() {
   ln -s "${SLURM_SINTERACTIVE_FILE_PATH}" "/usr/local/bin/sinteractive"
 }
 
+cloud_watch_fix() {
+  : '
+  Workaround for https://github.com/aws/aws-parallelcluster/issues/2162
+  '
+  sed -i 's/start_time = datetime.now(tz=timezone.utc)/start_time = datetime.now()/' \
+    "${CLUSTERMGTD_PATH}"
+
+  sed -i 's/start_time = datetime.now(tz=timezone.utc)/start_time = datetime.now()/' \
+    "${COMPUTEMGTD_PATH}"
+
+  systemctl restart supervisord
+}
+
 : '
 #################################################
 USER SETUP FUNCTIONS
@@ -700,6 +713,10 @@ SLURM_DBD_SSM_KEY_PASSWD="/parallel_cluster/main/slurm_rds_db_password"
 # RDS Endpoint
 SLURM_DBD_SSM_KEY_ENDPOINT="/parallel_cluster/main/slurm_rds_endpoint"
 
+# Files to manipulate for https://github.com/aws/aws-parallelcluster/issues/2162
+CLUSTERMGTD_PATH="/opt/parallelcluster/pyenv/versions/3.6.9/envs/node_virtualenv/lib/python3.6/site-packages/slurm_plugin/clustermgtd.py"
+COMPUTEMGTD_PATH="/opt/parallelcluster/pyenv/versions/3.6.9/envs/node_virtualenv/lib/python3.6/site-packages/slurm_plugin/computemgtd.py"
+
 # Globals - Cromwell
 CROMWELL_SLURM_CONFIG_FILE_PATH="/opt/cromwell/configs/slurm.conf"
 CROMWELL_TOOLS_CONDA_ENV_NAME="cromwell_tools"
@@ -753,6 +770,9 @@ case "${cfn_node_type}" in
       # Connect slurm to rds
       echo_stderr "Connecting to slurm rds database"
       connect_sacct_to_mysql_db
+      # cloud_watch_fix
+      echo_stderr "Fixing loop_time bug to stop escalation of cloud watch errors"
+      cloud_watch_fix
       # Update base conda env
       echo_stderr "Updating base conda env"
       update_base_conda_env
