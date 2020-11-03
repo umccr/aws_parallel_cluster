@@ -13,7 +13,9 @@ You must have [conda][miniconda] and [jq][jq_installation_page] before continuin
 ### Installation
 
 Head to the releases page to download the latest release.  
-```
+```shell
+# Make sure conda is at the latest version
+conda update --name base conda
 # Download the latest release from the GitHub releases page
 wget https://github.com/umccr/aws_parallel_cluster/releases/download/latest/release-latest.zip
 # Unzip
@@ -28,7 +30,7 @@ rm -rf release-latest.zip release-latest/
 
 You can also clone this github directory and checkout out the latest tag and run the installation script
 
-```
+```shell
 git clone https://github.com/umccr/aws_parallel_cluster
 git checkout latest
 ./install.sh

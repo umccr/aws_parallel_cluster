@@ -50,9 +50,24 @@ get_this_path() {
   echo "${this_dir}"
 }
 
+_verlte() {
+  [ "$1" = "$(echo -e "$1\n$2" | sort -V | head -n1)" ]
+}
+
+_verlt() {
+  [ "$1" = "$2" ] && return 1 || verlte "$1" "$2"
+}
+
 ############
 # CONDA
 ############
+
+get_conda_version() {
+  local version
+  version="$(conda --version | cut -d' ' -f2)"
+
+  echo "${version}"
+}
 
 has_conda_env() {
   : '
@@ -95,12 +110,23 @@ get_conda_env_prefix() {
   echo "${conda_env_prefix}"
 }
 
+check_conda_version() {
+  : '
+  Make sure at the latest conda version
+  '
+  if ! _verlte "${REQUIRED_CONDA_VERSION}" "$(get_conda_version)"; then
+    echo_stderr "Your conda version is too old"
+    return 1
+  fi
+}
+
 ###########
 # GLOBALS
 ###########
 
 PCLUSTER_CONDA_ENV_NAME="pcluster"
 CONDA_ENV_FILE="$(get_this_path)/conf/pcluster-env.yaml"
+REQUIRED_CONDA_VERSION="4.9.0"
 
 ############
 # RUN CHECKS
@@ -118,6 +144,11 @@ fi
 if ! has_jq; then
   echo_stderr "Error, could not find jq binary."
   echo_stderr "Please install jq globally (preferred) via apt/brew or locally via conda before continuing"
+  exit 1
+fi
+
+if ! check_conda_version; then
+  echo_stderr "Please run 'conda update -n base conda'"
   exit 1
 fi
 
