@@ -289,12 +289,20 @@ To do this you must have the following:
 
 From your local computer run:
 ```
+master_instance_id="<master_ec2_instance_id>"
+shared_fs_path="</path/to/outputs>"
+path_to_s3_bucket="<s3://>"
 export_env_vars="$(aws2-wrap --profile "${AWS_PROFILE}" --export | \
                    sed 's/export //g' | \
-                   tr '\n' ',')"
+                   tr '\n' ',' | \
+                   sed 's/,$//')"
 
-echo " sbatch --export \"${export_env_vars},ALL\" --wrap \"aws s3 sync /work/outputs/ s3://<bucket_path>\" | \
- ssm_run --instance-id="<master_name>"
+echo " sbatch \
+         --partition=\"copy\" \
+         --export \"${export_env_vars},ALL\" \
+         --wrap \"aws s3 sync \'${shared_fs_path}\' \'${path_to_s3_bucket}\' \" | \
+ ssm_run \
+    --instance-id "${master_instance_id}"
 ```
 
 > The space before the sbatch is for security reasons.  

@@ -89,6 +89,7 @@ mkdir -p "${REF_DIR_HARTWIG}"
 direct_download_link="https://nextcloud.hartwigmedicalfoundation.nl/s/LTiKTd8XxBqwaiC/download?path=%2FHMFTools-Resources%2FAmber"
 sbatch --job-name "amber_download_logs" \
   --output logs/amber_download_logs.log --error logs/amber_download_logs.log \
+  --partition=copy \
   --wrap "wget --output-document \"${REF_DIR_HARTWIG}/Amber.zip\" \
             \"${direct_download_link}\" && \
           unzip -d \"${REF_DIR_HARTWIG}/\" \"${REF_DIR_HARTWIG}/Amber.zip\" && \
@@ -101,6 +102,7 @@ sbatch --job-name "amber_download_logs" \
 direct_download_link="https://nextcloud.hartwigmedicalfoundation.nl/s/LTiKTd8XxBqwaiC/download?path=%2FHMFTools-Resources%2FGRIDSS"
 sbatch --job-name="gridss-data-download" \
   --output logs/GRIDSS_download_logs.log --error logs/GRIDSS_download_logs.log \
+  --partition=copy \
   --wrap "wget --output-document \"${REF_DIR_HARTWIG}/GRIDSS.zip\" \
             \"${direct_download_link}\" && \
           unzip -d \"${REF_DIR_HARTWIG}/\" \"${REF_DIR_HARTWIG}/GRIDSS.zip\" && \
@@ -115,6 +117,7 @@ Need the promiscuous files out of here
 direct_download_link="https://nextcloud.hartwigmedicalfoundation.nl/s/LTiKTd8XxBqwaiC/download?path=%2FHMFTools-Resources%2FGRIDSS-Purple-Linx-Docker"
 sbatch --job-name="hg19-dockerfiles-download" \
   --output logs/DOCKER_download_logs.log --error logs/DOCKER_download_logs.log \
+  --partition=copy \
   --wrap "wget --output-document \"${REF_DIR_HARTWIG}/DOCKER.zip\" \
             \"${direct_download_link}\" && \
           unzip -d ${REF_DIR_HARTWIG}/ \"${REF_DIR_HARTWIG}/DOCKER.zip\" && \
@@ -130,6 +133,7 @@ sbatch --job-name="hg19-dockerfiles-download" \
 direct_download_link="https://nextcloud.hartwigmedicalfoundation.nl/s/LTiKTd8XxBqwaiC/download?path=%2FHMFTools-Resources%2FLinx"
 sbatch --job-name "linx-download" \
   --output logs/linx_download_logs.log --error logs/linx_download_logs.log \
+  --partition=copy \
   --wrap "wget --output-document ${REF_DIR_HARTWIG}/linx.zip \
             \"${direct_download_link}\" && \
           unzip -d \"${REF_DIR_HARTWIG}/\" \"${REF_DIR_HARTWIG}/linx.zip\" && \
@@ -148,8 +152,9 @@ mkdir -p "${REF_DIR_UMCCR}"
 #### HG38 Genome Data
 
 ```{bash download_genomic_data, echo=TRUE, eval=FALSE}
-sbatch --job-name "umccr_aws_sync_logs" \
-  --output logs/umccr_aws_sync_logs.log --error logs/umccr_aws_sync_logs.log \
+sbatch --job-name "umccr_ref_data_download" \
+  --output logs/umccr_ref_data_download.log --error logs/umccr_ref_data_download.log \
+  --partition copy \
   --wrap "aws s3 sync s3://umccr-refdata-dev/genomes/hg38/ \"${REF_DIR_UMCCR}/hg38/\""
 ```
 
@@ -238,8 +243,9 @@ mkdir -p "${REF_DIR_BOYLE_LAB}"
 ```{bash download_black_list, echo=TRUE, eval=FALSE}
 direct_download_link="https://github.com/Boyle-Lab/Blacklist/raw/master/lists/hg38-blacklist.v2.bed.gz"
 sbatch --job-name "hg38-blacklist-download" \
+  --partition=copy \
   --output logs/hg38-blacklist-download.log --error logs/hg38-blacklist-download.log \
-  --wrap "wget  \"${direct_download_link}\" \
+  --wrap "wget \"${direct_download_link}\" \
             --output-document \"${REF_DIR_BOYLE_LAB}/hg38-blacklist.v2.bed.gz\""
 ```
 
@@ -403,10 +409,6 @@ Write the following file to `gridss-purple-linx.packed.input-SBJ_seqcii_020.json
       "location": "__SHARED_DIR__/reference-data/umccr/hg38/bwa/hg38.fa.sa"
     }
   ],
-  "reference_dict": {
-    "class": "File",
-    "location": "__SHARED_DIR__/reference-data/umccr/hg38/hg38.dict"
-  },
   "gc_profile": {
     "class": "File",
     "location": "__SHARED_DIR__/reference-data/umccr/hg38/hmf/GC_profile.1000bp.cnp"
@@ -470,9 +472,7 @@ sed -i "s%__SHARED_DIR__%${SHARED_DIR}%g" gridss-purple-linx.packed.input-SBJ_se
 ## Downloading the workflow from GitHub
 
 ```{bash get_workflow_from_git_repo, echo=TRUE, eval=FALSE}
-gridss_workflow_url_with_token="https://raw.githubusercontent.com/umccr-illumina/cwl-iap/master/workflows/gridss-purple-linx/0.1/iap-requests/gridss-purple-linx-0.1.packed.cwl.json?token=AB6RMGYOL5FVNKITJQK5JHC7MX4PU"
-wget --output-document gridss-purple-linx-0.1.packed.cwl.json \
-  "${gridss_workflow_url_with_token}"
+git clone https://github.com/alexiswl/gridss-purple-linx
 ```
 
 ## Running the workflow through toil

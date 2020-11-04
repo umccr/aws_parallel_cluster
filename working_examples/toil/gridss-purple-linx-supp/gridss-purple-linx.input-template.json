@@ -1,0 +1,95 @@
+{
+  "sample_name": "__SAMPLE_NAME__",
+  "normal_sample": "__NORMAL_SAMPLE__",
+  "tumor_sample": "__TUMOR_SAMPLE__",
+  "tumor_bam": {
+    "class": "File",
+    "location": "__SHARED_DIR__/input-data/__SAMPLE_NAME__/__TUMOR_SAMPLE__-ready.bam"
+  },
+  "normal_bam": {
+    "class": "File",
+    "location": "__SHARED_DIR__/input-data/__SAMPLE_NAME__/__NORMAL_SAMPLE__-ready.bam"
+  },
+  "snvvcf": {
+    "class": "File",
+    "location": "__SHARED_DIR__/input-data/__SAMPLE_NAME__/__TUMOR_SAMPLE__-somatic.vcf.gz"
+  },
+  "fasta_reference": {
+    "class": "File",
+    "location": "__SHARED_DIR__/reference-data/umccr/hg38/hg38.fa"
+  },
+  "bwa_reference_files": [
+    {
+      "class": "File",
+      "location": "__SHARED_DIR__/reference-data/umccr/hg38/bwa/hg38.fa.alt"
+    },
+    {
+      "class": "File",
+      "location": "__SHARED_DIR__/reference-data/umccr/hg38/bwa/hg38.fa.amb"
+    },
+    {
+      "class": "File",
+      "location": "__SHARED_DIR__/reference-data/umccr/hg38/bwa/hg38.fa.ann"
+    },
+    {
+      "class": "File",
+      "location": "__SHARED_DIR__/reference-data/umccr/hg38/bwa/hg38.fa.bwt"
+    },
+    {
+      "class": "File",
+      "location": "__SHARED_DIR__/reference-data/umccr/hg38/bwa/hg38.fa.pac"
+    },
+    {
+      "class": "File",
+      "location": "__SHARED_DIR__/reference-data/umccr/hg38/bwa/hg38.fa.sa"
+    }
+  ],
+  "gc_profile": {
+    "class": "File",
+    "location": "__SHARED_DIR__/reference-data/umccr/hg38/hmf/GC_profile.1000bp.cnp"
+  },
+  "blacklist_gridss": {
+    "class": "File",
+    "location": "__SHARED_DIR__/reference-data/Boyle-Lab/hg38-blacklist.v2.bed.gz"
+  },
+  "breakend_pon": {
+    "class": "File",
+    "location": "__SHARED_DIR__/reference-data/hartwig-nextcloud/GRIDSS/gridss_pon_single_breakend.hg38.bed"
+  },
+  "breakpoint_pon": {
+    "class": "File",
+    "location": "__SHARED_DIR__/reference-data/hartwig-nextcloud/GRIDSS/gridss_pon_breakpoint.hg38.bedpe"
+  },
+  "breakpoint_hotspot": {
+    "class": "File",
+    "location": "__SHARED_DIR__/reference-data/hartwig-nextcloud/GRIDSS/KnownFusionPairs.hg38.bedpe"
+  },
+  "bafsnps_amber": {
+    "class": "File",
+    "location": "__SHARED_DIR__/reference-data/hartwig-nextcloud/Amber/GermlineHetPon.hg38.vcf.gz"
+  },
+  "known_fusion_data_linx": {
+    "class": "File",
+    "location": "__SHARED_DIR__/reference-data/hartwig-nextcloud/Linx/known_fusion_data.hg38.csv"
+  },
+  "gene_transcripts_dir_linx": {
+    "class": "Directory",
+    "location": "__SHARED_DIR__/reference-data/hartwig-nextcloud/Linx/ensemble_data_cache_hg38"
+  },
+  "viral_hosts_file_linx": {
+    "class": "File",
+    "location": "__SHARED_DIR__/reference-data/hartwig-nextcloud/Linx/viral_host_ref.csv"
+  },
+  "replication_origins_file_linx": {
+    "class": "File",
+    "location": "__SHARED_DIR__/reference-data/hartwig-nextcloud/Linx/heli_rep_origins.bed"
+  },
+  "line_element_file_linx": {
+    "class": "File",
+    "location": "__SHARED_DIR__/reference-data/hartwig-nextcloud/Linx/line_elements.hg38.csv"
+  },
+  "fragile_site_file_linx": {
+    "class": "File",
+    "location": "__SHARED_DIR__/reference-data/hartwig-nextcloud/Linx/fragile_sites_hmf.hg38.csv"
+  }
+}
