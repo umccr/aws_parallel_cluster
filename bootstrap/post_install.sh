@@ -696,7 +696,7 @@ fi
 SLURM_CONF_FILE="/opt/slurm/etc/slurm.conf"
 # FIXME Iterate through a list instead
 SLURM_COMPUTE_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_compute_partition.conf"
-SLURM_COMPUTE_LONG_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_compute_long_partition.conf"
+SLURM_COMPUTE_LONG_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_compute-long_partition.conf"
 SLURM_COPY_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_copy_partition.conf"
 SLURM_LONG_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_long_partition.conf"
 SLURM_SINTERACTIVE_S3="$(get_pc_s3_root)/slurm/scripts/sinteractive.sh"
@@ -765,9 +765,6 @@ if [[ ! -v cfn_node_type ]]; then
   echo_stderr "cfn_node_type is not defined. Cannot determine if we're on a master or compute node. Exiting"
   exit 1
 fi
-
-# Standard procedure before running installer
-yum update -y
 
 # Complete slurm and cromwell post-slurm installation
 case "${cfn_node_type}" in
