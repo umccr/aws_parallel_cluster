@@ -5,9 +5,6 @@ echo_stderr() {
   echo "${@}" 1>&2
 }
 
-# Source config, tells us if we're on a compute or master node
-. "/etc/parallelcluster/cfnconfig"
-
 this_instance_id() {
   : '
   Use the ec2-metadata command to return the instance id this ec2 instance is running on
@@ -126,8 +123,18 @@ RELEASE_VERSION="__VERSION__"  # Currently unused
 # Runtime installations and configurations
 # Processes to complete on ALL (master and compute) nodes at startup
 
+#########
+# START
+#########
+
+# Exit on failed command
+set -e
+
+# Source config, tells us if we're on a compute or master node
+. "/etc/parallelcluster/cfnconfig"
+
 # Security updates
-yum update -y
+yum update -y --security
 
 # Start the docker service
 systemctl start docker

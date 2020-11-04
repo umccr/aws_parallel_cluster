@@ -243,6 +243,9 @@ enable_mem_on_slurm() {
   # FIXME Hardcoded key-pair-vals should be put in a dict / json
   sed -i '/^NodeName=compute-dy-c54xlarge/ s/$/ RealMemory=30000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
   sed -i '/^NodeName=compute-dy-m54xlarge/ s/$/ RealMemory=62000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
+  sed -i '/^NodeName=compute-long-dy-c54xlarge/ s/$/ RealMemory=30000/' "${SLURM_COMPUTE_LONG_PARTITION_CONFIG_FILE}"
+  sed -i '/^NodeName=compute-long-dy-m54xlarge/ s/$/ RealMemory=62000/' "${SLURM_COMPUTE_LONG_PARTITION_CONFIG_FILE}"
+  sed -i '/^NodeName=compute-dy-m54xlarge/ s/$/ RealMemory=62000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
   sed -i '/^NodeName=copy-dy-m5large/ s/$/ RealMemory=6000/' "${SLURM_COPY_PARTITION_CONFIG_FILE}"
   sed -i '/^NodeName=long-dy-m5large/ s/$/ RealMemory=6000/' "${SLURM_LONG_PARTITION_CONFIG_FILE}"
 
@@ -368,14 +371,21 @@ get_sinteractive_command() {
   ln -s "${SLURM_SINTERACTIVE_FILE_PATH}" "/usr/local/bin/sinteractive"
 }
 
-cloud_watch_fix() {
+cloud_watch_master_fix() {
   : '
   Workaround for https://github.com/aws/aws-parallelcluster/issues/2162
   '
   sed -i 's/start_time = datetime.now(tz=timezone.utc)/start_time = datetime.now()/' \
     "${CLUSTERMGTD_PATH}"
 
-  sed -i 's/start_time = datetime.now(tz=timezone.utc)/start_time = datetime.now()/' \
+  systemctl restart supervisord
+}
+
+cloud_watch_compute_fix() {
+  : '
+  Current time parameter used in other spots need the UTC time stamp
+  '
+  sed -i 's/sleep_remaining_loop_time(computemgtd_config.loop_time, current_time)/sleep_remaining_loop_time(computemgtd_config.loop_time, datetime.now())/' \
     "${COMPUTEMGTD_PATH}"
 
   systemctl restart supervisord
@@ -686,6 +696,7 @@ fi
 SLURM_CONF_FILE="/opt/slurm/etc/slurm.conf"
 # FIXME Iterate through a list instead
 SLURM_COMPUTE_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_compute_partition.conf"
+SLURM_COMPUTE_LONG_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_compute-long_partition.conf"
 SLURM_COPY_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_copy_partition.conf"
 SLURM_LONG_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_long_partition.conf"
 SLURM_SINTERACTIVE_S3="$(get_pc_s3_root)/slurm/scripts/sinteractive.sh"
@@ -772,7 +783,7 @@ case "${cfn_node_type}" in
       connect_sacct_to_mysql_db
       # cloud_watch_fix
       echo_stderr "Fixing loop_time bug to stop escalation of cloud watch errors"
-      cloud_watch_fix
+      cloud_watch_master_fix
       # Update base conda env
       echo_stderr "Updating base conda env"
       update_base_conda_env
@@ -799,7 +810,8 @@ case "${cfn_node_type}" in
       get_github_access
     ;;
     ComputeFleet)
-      # Do nothing
+      echo_stderr "Fixing loop_time bug to stop escalation of cloud watch errors"
+      cloud_watch_compute_fix
     ;;
     *)
       # Do nothing
