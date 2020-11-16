@@ -7,6 +7,8 @@ Simple script that:
 3. Adds scripts to bin subdir in <pcluster_conda_prefix>
 '
 
+set -euxo pipefail
+
 ###########
 # CHECKS
 ###########
@@ -181,8 +183,13 @@ echo_stderr "Adding pcluster.conf to \"${conda_pcluster_env_prefix}/etc/pcluster
 mkdir -p "${conda_pcluster_env_prefix}/etc/"
 cp "$(get_this_path)/conf/pcluster.conf" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
 
+
 # Ensure that if we're installing from the git repo, that we turn '__VERSION__' into 'latest'
-sed -i "s/__VERSION__/latest/g" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
+if [[ "${OSTYPE}" == "darwin"* ]]; then
+    sed -i "" "s/__VERSION__/latest/g" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
+else
+    sed -i "s/__VERSION__/latest/g" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
+fi
 
 ###########
 # COPY BINS

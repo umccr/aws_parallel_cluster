@@ -43,7 +43,14 @@ UMCCR's intent is to onboard users to AWS, first on HPC and then steadily **tran
 
 ### Prerequisites
 
-You must have [conda][miniconda] and [jq][jq_installation_page] before continuing 
+You must have [conda][miniconda] and [jq][jq_installation_page] before continuing. 
+
+* MacOS users: 
+   * Must have [`brew`][brew_home] installed
+   * Must have [`coreutils`][coreutils_home] installed (via brew)  
+   
+* Windows users 
+   * Must be on Windows 10 with [`WSL2`][wsl2_home] installed (on Ubuntu).
 
 ### Installation
 
@@ -357,3 +364,6 @@ Ensure you're setting `--cluster-template` correctly and pointing to the right c
 [aws_doesnt_support_pip_bug]: https://github.com/aws/aws-cli/issues/4947
 [alexiswl_bashrc]: https://github.com/alexiswl/bashrc/
 [jq_installation_page]: https://stedolan.github.io/jq/download/
+[coreutils_home]: https://formulae.brew.sh/formula/coreutils
+[brew_home]: https://brew.sh/
+[wsl2_home]: https://docs.microsoft.com/en-us/windows/wsl/install-win10
