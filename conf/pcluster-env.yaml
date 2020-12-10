@@ -2,6 +2,7 @@ name: pcluster
 channels:
   - anaconda
   - conda-forge
+  - pandas
 dependencies:
   - jq
   - pip
@@ -9,3 +10,4 @@ dependencies:
     - aws-parallelcluster == 2.9.1
     - aws2-wrap == 1.1.1
     - yawsso
+    - packaging == 20.4
