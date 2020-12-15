@@ -31,7 +31,7 @@ We will also refer to this image when testing our recipes and documents before p
 ### Recipes and Documents
 
 Documents command what commands / downloads are run on the source ami to produce our custom AMI.      
-Documents are generally in yaml format, examples are [base.yml](base.yml) and [conda.yml](conda.yml).  
+Documents are generally in yaml format, examples are [base.yml](components/00_base/base.yml) and [conda.yml](components/01_conda/conda.yml).  
 A recipe is a suite of (ordered) documents.
 
 ### Testing documents locally.
