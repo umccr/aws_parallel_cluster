@@ -10,6 +10,7 @@ from pathlib import Path
 import getpass
 from umccr_utils.logger import get_logger
 from umccr_utils.errors import NoCondaEnvError
+from umccr_utils.aws_wrappers import get_aws_version, get_user as get_aws_user
 import json
 
 logger = get_logger()
@@ -36,6 +37,17 @@ def get_conda_env():
     return conda_env
 
 
+def get_pcluster_version():
+    """
+    Return the version of parallel cluster
+    :return:
+    """
+
+    # TODO
+
+    return None
+
+
 def check_env():
     """
     Check we're in the right environment
@@ -47,7 +59,17 @@ def check_env():
     * We have an IP address?
     :return:
     """
-    # TODO
+    if get_conda_env() is not "pcluster":
+        raise CondaEnvError
+
+    if get_pcluster_version() is None:
+        raise PClusterVersionError
+
+    if get_aws_version(): # TODO check >= 2
+        raise AWSVersionError
+
+    if get_aws_user() is None:
+        raise AWSLoginError
 
 
 def get_user():
@@ -105,5 +127,3 @@ def json_to_str(json_obj):
     """
 
     return json.dumps(json_obj)
-
-

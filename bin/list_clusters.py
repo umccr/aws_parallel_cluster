@@ -9,13 +9,28 @@ from umccr_utils.aws_wrappers import check_credentials, get_master_ec2_instance_
 from umccr_utils.miscell import run_subprocess_proc
 from umccr_utils.logger import get_logger
 from umccr_utils.globals import AWS_REGION
+from umccr_utils.help import print_extended_help
 from io import StringIO
 import boto3
 
 
 logger = get_logger()
 
-# TODO - create get_args even if we don't have any
+
+def get_args():
+    """
+    Whilst there's no reason for us to have this,
+    maybe in future we ought to specify the region used
+    :return:
+    """
+
+    parser = argparse.ArgumentParser(description="List the currently running clusters")
+
+    parser.add_argument("--help-ext",
+                        description="Print the extended help",
+                        required=False)
+
+    return args
 
 
 def complete_checks():
@@ -70,6 +85,11 @@ def print_df(cluster_df):
 
 
 def main():
+    args = get_args()
+
+    if getattr(args, "help_ext", None) is not None:
+        print_extended_help()
+
     cluster_df = get_cluster_list()
 
     cluster_df["Master"] = cluster_df["Name"].apply(get_master_ec2_instance_id_from_pcluster_id)
