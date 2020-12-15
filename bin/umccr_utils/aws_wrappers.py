@@ -23,8 +23,12 @@ def get_aws_account_name():
     except UnauthorizedSSOTokenError:
         raise AWSCredentialsError
 
-    # TODO put this through a try-except
-    return AWS_ACCOUNT_MAPPING[caller_id['Account']]
+    account = caller_id['Account']
+
+    if account not in AWS_ACCOUNT_MAPPING.keys():
+        raise AWSCredentialsError
+
+    return AWS_ACCOUNT_MAPPING[account]
 
 
 def check_credentials():

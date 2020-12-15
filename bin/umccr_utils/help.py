@@ -27,3 +27,54 @@ def get_ssm_login_help():
     """
 
     return ssm_help_str
+
+
+def get_parallel_cluster_extended_help():
+    """
+    Returns a list of help for running aws parallel cluster
+    :return:
+    """
+
+    getting_started_help = """
+    Welcome to UMCCR's AWS Parallel cluster. There are three main functions you need to worry about.
+    
+    ## Starting a cluster
+    Getting started with a cluster is super simple - just call the command like so:
+    start_cluster.py --cluster-name <NAME_OF_YOUR_CLUSTER>
+    
+    We also cater for the option of multiple filesystem types and adding in extra tags to each cluster.
+    
+    ## Logging into a cluster
+    
+    Shown below is the bash alias required to make sure you can easily login with aws' ssm start-session command. 
+    Make sure you have aws v2 installed on your PATH variable and the ssm alias as shown below.  
+    
+    {}
+    
+    You may now log into your cluster with ssm <parallel-cluster-master-instance-id>
+    
+    ## Listing Clusters
+    
+    This command requires no parameters:
+    
+    list_clusters.py
+    
+    Will return the cluster name, master node instance id, along with the user that created the cluster.  
+    
+    ## Stopping a cluster
+    
+    This will shut down a cluster 
+    
+    stop_cluster.py --cluster-name <NAME_OF_CLUSTER_TO_CLOSE>
+    
+    """.format(get_ssm_login_help())
+
+
+def print_extended_help():
+    """
+    Print the extended help to the console
+    :return:
+    """
+
+    print(get_parallel_cluster_extended_help())
+

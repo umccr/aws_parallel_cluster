@@ -94,7 +94,7 @@ AWS_CLUSTER_BASICS = {
     # FIXME update __VERSION__ in 'pre_install' and 'post_install' globals? - could be done install.sh side?
     "pre_install": "s3://tothill-parallel-cluster-dev/__VERSION__/bootstrap/pre_install.sh",
     "post_install": "s3://tothill-parallel-cluster-dev/__VERSION__/bootstrap/post_install.sh",
-    "custom_ami": "ami-074416eece29e32ec",
+    "custom_ami": "ami-074416eece29e32ec",  # FIXME - this should be retrieved from somewhere, like an ssm parameter
     "master_root_volume_size": "45",
     "compute_root_volume_size": "60"
 }

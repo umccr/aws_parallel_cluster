@@ -10,12 +10,14 @@ from json.decoder import JSONDecodeError
 from umccr_utils.logger import get_logger
 from umccr_utils.aws_wrappers import get_master_ec2_instance_id_from_pcluster_id, get_aws_account_name
 import tempfile
-from umccr_utils.miscell import json_to_str, run_subprocess_proc
+from umccr_utils.miscell import json_to_str, run_subprocess_proc, check_env
+from umccr_utils.help import print_extended_help
 from umccr_utils.errors import PClusterCreateError
 import configparser
 from umccr_utils.globals import \
     AWS_GLOBAL_SETTINGS, AWS_REGION, AWS_CLUSTER_BASICS, AWS_NETWORK, \
     AWS_PARTITION_QUEUES, AWS_FILESYSTEM, AWS_COMPUTE_RESOURCES, AWS_ALIASES
+import sys
 
 logger = get_logger()
 
@@ -37,10 +39,6 @@ def get_args():
                         choices=["efs", "fsx"],
                         default="efs")
 
-    parser.add_argument("--config-template-path",
-                        help="Path to the configuration template",
-                        required=False)
-
     parser.add_argument("--no-rollback",
                         help="Do you wish to add the --norollback option to the pcluster create command",
                         action="store_true",
@@ -54,7 +52,9 @@ def get_args():
                         help="json-as-str key-pair values for tags to be used.",
                         required=False)
 
-    # TODO - --help-ext
+    parser.add_argument("--help-ext",
+                        help="Print extended help",
+                        required=False)
 
     args = parser.parse_args()
 
@@ -149,7 +149,7 @@ def create_configuration_file(args):
     pcluster_config["cluster {}".format(args.cluster_name)] = AWS_CLUSTER_BASICS
 
     # Add in network settings:
-    pcluster_config["vpc {}_network".format(args.cluster_name)] = AWS_NETWORK[""]
+    pcluster_config["vpc {}_network".format(args.cluster_name)] = AWS_NETWORK[get_aws_account_name()]
     pcluster_config["cluster {}".format(args.cluster_name)]["vpc_settings"] = "{}_network".format(args.cluster_name)
 
     # Add in file system settings
@@ -222,7 +222,14 @@ def main():
 
     args = get_args()
 
+    if getattr(args, "help_ext", None) is not None:
+        print_extended_help()
+        sys.exit(0)
+
     args = set_args(args)
+
+    # Check environment vars
+    check_env()
 
     configuration_file = create_configuration_file(args)
 
