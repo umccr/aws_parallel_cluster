@@ -15,9 +15,9 @@ phases:
       - name: download_cromwell_files
         action: S3Download
         inputs:
-          - source: "__S3_CONFIG_ROOT__/bcbio/env/*"
+          - source: "__S3_CONFIG_ROOT__/__VERSION__/bcbio/env/*"
             destination: "/opt/bcbio/env/"
-          - source: "__S3_CONFIG_ROOT__/bcbio/config/*"
+          - source: "__S3_CONFIG_ROOT__/__VERSION__/bcbio/config/*"
             destination: "/opt/bcbio/config/"
       - name: bcbio
         action: ExecuteBash

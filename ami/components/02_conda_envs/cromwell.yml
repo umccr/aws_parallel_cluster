@@ -16,11 +16,11 @@ phases:
       - name: download_cromwell_files
         action: S3Download
         inputs:
-          - source: "__S3_CONFIG_ROOT__/cromwell/configs/*"
+          - source: "__S3_CONFIG_ROOT__/__VERSION__/cromwell/configs/*"
             destination: "/opt/cromwell/configs/"
-          - source: "__S3_CONFIG_ROOT__/cromwell/env/*"
+          - source: "__S3_CONFIG_ROOT__/__VERSION__/cromwell/env/*"
             destination: "/opt/cromwell/env/"
-          - source: "__S3_CONFIG_ROOT__/cromwell/scripts/*"
+          - source: "__S3_CONFIG_ROOT__/__VERSION__/cromwell/scripts/*"
             destination: "/opt/cromwell/scripts/"
       - name: cromwell
         action: ExecuteBash

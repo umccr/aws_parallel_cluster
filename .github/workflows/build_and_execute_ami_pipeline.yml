@@ -139,8 +139,7 @@ jobs:
             --parameters parent_image="${{ steps.get-parent-ami.outputs.parent_ami }}"
             --parameters infrastructure_type="t2.medium"
             --parameters ssm_s3_config_root="/parallel_cluster/main/s3_config_root"
-            --parameters component_version="${{ steps.get-tag-name.outputs.tag_name }}"
-            --parameters recipe_version="${{ steps.get-tag-name.outputs.tag_name }}"
+            --parameters git_tag="${{ steps.get-tag-name.outputs.tag_name }}"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets[matrix.aws_access_key_id] }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[matrix.aws_secret_access_key] }}

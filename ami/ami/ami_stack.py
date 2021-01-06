@@ -10,7 +10,7 @@ from pathlib import Path
 import tempfile
 
 
-def replace_string_in_file(file_path, pattern, repl):
+def replace_string_in_file(file_path, patterns, repls):
     """
     Takes an input file, returns a tmp file name
     """
@@ -20,7 +20,10 @@ def replace_string_in_file(file_path, pattern, repl):
 
     with open(file_path, "r") as in_file_h, open(new_file.name, "w") as out_file_h:
         for line in in_file_h:
-            out_file_h.write(line.replace(pattern, repl))
+            new_line = line
+            for pattern, repl in zip(patterns, repls):
+                new_line = line.replace(pattern, repl)
+            out_file_h.write(new_line)
 
     return new_file.name
 
@@ -76,8 +79,7 @@ class AmiStack(core.Stack):
         s3_read_role = core.CfnParameter(self, id="s3_read_role", type="String")
         parent_image = core.CfnParameter(self, id="parent_image", type="String")
         infrastructure_type = core.CfnParameter(self, id="infrastructure_type", type="String")
-        component_version = core.CfnParameter(self, id="component_version", type="String")
-        recipe_version = core.CfnParameter(self, id="recipe_version", type="String")
+        git_tag = core.CfnParameter(self, id="git_tag", type="String")
         tags_str = core.CfnParameter(self, id="tags", type="String")
         s3_config_root_ssm_key = core.CfnParameter(self, id="ssm_s3_config_root", type="String")
 
@@ -96,8 +98,10 @@ class AmiStack(core.Stack):
 
         # Add components
         for component_path in sorted_component_paths:
-            tmp_component_path = Path(replace_string_in_file(component_path, "__S3_CONFIG_ROOT__", s3_config_root_ssm_value))
-            component_s3_asset_objs.append(create_asset_from_component(self, component_path, s3_read_role))
+            tmp_component_path = Path(replace_string_in_file(component_path,
+                                                             ["__S3_CONFIG_ROOT__", "__VERSION__"],
+                                                             [s3_config_root_ssm_value, git_tag.value_as_string]))
+            component_s3_asset_objs.append(create_asset_from_component(self, tmp_component_path, s3_read_role))
 
         component_objs = []
         for s3_asset_obj in component_s3_asset_objs:
@@ -105,7 +109,7 @@ class AmiStack(core.Stack):
                                                             s3_asset_obj.name,
                                                             name=s3_asset_obj.name,
                                                             platform="Linux",
-                                                            version=component_version.value_as_string,
+                                                            version=git_tag.value_as_string,
                                                             uri=s3_asset_obj.attr_arn,
                                                             ))
 
@@ -113,7 +117,7 @@ class AmiStack(core.Stack):
         recipe_obj = imagebuilder.CfnImageRecipe(self,
                                                  "parallelClusterImageRecipe",
                                                  name="parallelClusterImageRecipe",
-                                                 version=recipe_version.value_as_string,
+                                                 version=git_tag.value_as_string,
                                                  components=component_objs,
                                                  parent_image=parent_image.value_as_string,
                                                  )
