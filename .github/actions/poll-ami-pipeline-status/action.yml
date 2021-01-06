@@ -1,0 +1,130 @@
+name: Poll Pipeline Execution
+
+description: |
+  Given an image build version arn, poll until the pipline has stopped by using the state.status attribute of the image
+  Status will be one of:
+  * "PENDING"
+  * "CREATING"
+  * "BUILDING"
+  * "TESTING"
+  * "DISTRIBUTING"
+  * "INTEGRATING"
+  * "AVAILABLE"
+  * "CANCELLED"
+  * "FAILED"
+  * "DEPRECATED"
+  * "DELETED"
+
+  Status by action:
+
+  Continuing Polling:
+    * "PENDING"
+    * "CREATING"
+    * "BUILDING"
+    * "TESTING"
+    * "DISTRIBUTING"
+    * "INTEGRATING"
+
+  Exit with success:
+    * "AVAILABLE"
+
+  Exit with failure:
+    * "CANCELLED"
+    * "FAILED"
+    * "DEPRECATED"
+    * "DELETED"
+
+
+runs:
+  using: "composite"
+  steps:
+    - id: get-boto3
+      shell: bash
+      run: |
+        sudo apt-get update -y -qq
+        sudo apt-get install -y -qq \
+          python3-pip
+
+        pip install boto3
+    - id: poll-status
+      shell: python3
+      env:
+        IMAGE_BUILD_VERSION_ARN: ${{ inputs.image_build_version_arn }}
+      run: |
+        # Imports
+        import sys
+        import os
+        import boto3
+        import time
+        import subprocess
+
+        # Globals
+        POLLING_STATUS = {
+          "FAILED": [
+            "CANCELLED",
+            "FAILED",
+            "DEPRECATED",
+            "DELETED"
+          ],
+          "SUCCEEDED": [
+            "AVAILABLE"
+          ],
+          "RUNNING": [
+            "PENDING",
+            "CREATING",
+            "BUILDING",
+            "TESTING",
+            "DISTRIBUTING",
+            "INTEGRATING"
+          ]
+        }
+
+        # Get image build version arn
+        image_build_version_arn = os.environ["IMAGE_BUILD_VERSION_ARN"]
+
+        # Check valid
+        if image_build_version_arn is None or image_build_version_arn == "":
+            sys.exit(1)
+
+        # Initialise boto3-imagebuilder client
+        client = boto3.client('imagebuilder')
+
+        # Enter the infinite loop
+        timer = 30  # Minutes
+        status = None  # Initialise status value before entering loop
+
+        # Start the while loop
+        while timer > 0:
+          # Get image response
+          response = client.get_image(imageBuildVersionArn=image_build_version_arn)
+
+          # Get status
+          status = response['image']['state']['status']
+
+          # Check status against polling values
+          if status not in POLLING_STATUS["RUNNING"]:
+            break
+
+          # Build is still running
+          time.sleep(60)  # Sleep for a minute before starting over
+          timer -= 1
+          continue
+
+        # Set final output
+        print("::set-output name=build-status::{}".format(status))
+
+        # Status
+        if status in POLLING_STATUS["SUCCEEDED"]:
+          # Build has passed
+          sys.exit(0)
+        elif status in POLLING_STATUS["FAILED"]:
+          # Build has failed
+          sys.exit(1)
+        else:
+          # Unknown POLLING_STATUS value
+          sys.exit(1)
+
+outputs:
+  build_status:
+    description: "Final build status of the image"
+    value: ${{  steps.poll-status.outputs.build-status }}

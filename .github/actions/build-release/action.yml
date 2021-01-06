@@ -1,4 +1,5 @@
 name: build-release
+
 inputs:
   tag_name:
     description: name of the release tag
@@ -16,21 +17,28 @@ runs:
         sudo apt-get install -y \
           rsync \
           zip
+
         # Create release dir
         mkdir -p "release-${{ inputs.tag_name }}"
+
         # Create subdirs too, as present on GitHub
         mkdir -p "release-${{ inputs.tag_name }}/conf"
         mkdir -p "release-${{ inputs.tag_name }}/bin"
-        # Update version template for config and for installation script
-        sed "s/__VERSION__/${{ inputs.tag_name }}/g" "conf/pcluster.conf" > "release-${{ inputs.tag_name }}/conf/pcluster.conf"
-        sed "s/__VERSION__/${{ inputs.tag_name }}/g" "install.sh" > "release-${{ inputs.tag_name }}/install.sh"
+
+        # Update globals.py for release
+        sed -i "s/__VERSION__/${{ inputs.tag_name }}/g" ""release-${{ inputs.tag_name }}/bin/umccr_utils/version.py"
+
         # Add scripts
         rsync --archive bin/ "release-${{ inputs.tag_name }}/bin/"
+
         # Add conda-env yaml
         cp conf/pcluster-env.yaml "release-${{ inputs.tag_name }}/conf/pcluster-env.yaml"
+
         # Make install.sh an executable
         chmod +x install.sh
+
         # Add installation script
         mv install.sh "release-${{ inputs.tag_name }}/install.sh"
+
         # Create zip file
         zip -r "release-${{ inputs.tag_name }}.zip" "release-${{ inputs.tag_name }}"

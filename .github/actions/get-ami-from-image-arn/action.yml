@@ -1,0 +1,96 @@
+# Get the ami pipeline created on the cdk output stack based on the tags
+
+name: Get ami pipeline arn
+
+description: |
+  Use boto3 to get the ami based on the imagepipeline arn and the image pipeline version arn
+
+runs:
+  using: "composite"
+  steps:
+    - id: get-boto3
+      shell: bash
+      run: |
+        # Update and install pip
+        sudo apt-get update -y -qq
+        sudo apt-get install -y -qq \
+          python3-pip
+        # Use pipe to install boto3
+        pip install boto3
+    - id: get-ami
+      shell: python
+      env:
+        IMAGE_PIPELINE_ARN: ${{ inputs.image_pipeline_arn }}
+        BUILD_IMAGE_VERSION_ARN: ${{ inputs.build_image_version_arn }}
+      run: |
+        # Imports
+        import sys
+        import os
+        import boto3
+        import time
+        import subprocess
+
+        # Get env vars
+        image_pipeline_arn = os.environ["IMAGE_PIPELINE_ARN"]
+
+        # Build image version
+        build_image_version_arn = os.environ["BUILD_IMAGE_VERSION_ARN"]
+
+        # Check values are present
+        if image_pipeline_arn is None or image_pipeline_arn == "":
+          sys.exit(1)
+        if build_image_version_arn is None or build_image_version_arn == "":
+          sys.exit(1)
+
+        # Set boto3 client
+        client = boto3.client('imagebuilder')
+
+        # Get image response
+        # Unfortunately our filters are limited and we must filter on our own
+        response = client.list_image_pipeline_images(
+          image_pipeline_arn=image_pipeline_arn
+        )
+
+        # Get image summary list
+        image_summary_list = response["imageSummaryList"]
+
+        # arn of each element will map to image builder version arn
+        if image_summary_list == 0:
+          # Something has gone wrong here
+          sys.exit(1)
+
+        # Iterate through each, return the single value with the matching arn
+        image_obj = None
+        for image_summary in image_summary_list:
+          if image_summary["arn"] == build_image_version_arn:
+            image_obj = image_summary
+            break
+        else:
+          # Could not find the image
+          sys.exit(1)
+
+        # Check status
+        if not image_obj["state"]["status"] == "AVAILABLE":
+          # Image isn't available
+          sys.exit(1)
+
+        # Get list of amis created
+        amis = image_obj["outputResources"]["amis"]
+
+        # There shouldn't be more than one ami for each build version
+        if not len(amis) == 1:
+          # Found multiple or no amis
+          sys.exit(1)
+
+        # Collect the one (and only) ami
+        ami = amis[0]['image']
+
+        # Return the ami value
+        print("::set-output name=ami::{}".format(ami))
+
+
+outputs:
+  ami:
+    description: |
+      The ami value.. finally!
+    value: ${{  steps.get-ami.outputs.ami }}

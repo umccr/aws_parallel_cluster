@@ -1,0 +1,25 @@
+# Add tags to image
+name: Add tags to image
+
+description: |
+  Add tags to the image object
+
+runs:
+  using: "composite"
+  steps:
+    - id: add-tags-to-image
+      shell: bash
+      env:
+        ami: ${{ inputs.ami }}
+        tags: ${{ inputs.tags }}
+      run: |
+        # Install
+        sudo apt-get update -y -qq
+        sudo apt-get install -y -qq \
+          awscli
+
+        # Add tags
+        aws ec2 create-tags \
+          --resources "${ami}" \
+          --tags "${tags}"
+

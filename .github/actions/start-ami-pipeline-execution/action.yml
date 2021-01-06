@@ -1,0 +1,37 @@
+name: start-ami-pipeline-execution
+
+description: |
+  Pull in AWS binaries / credentials
+
+runs:
+  using: "composite"
+  steps:
+    - id: start-image-pipeline
+      shell: bash
+      run: |
+        # Install requirements
+        sudo apt-get update -qq
+        sudo apt-get install -qq -y \
+          awscli \
+          jq
+
+        # Run the ami image execution command
+        # Get the build image version
+        build_image_version_arn="$(aws imagebuilder start-image-pipeline-execution \
+                                     --image-pipeline-arn "${{ inputs.image_pipeline_arn }}" | {
+                                   jq '.imageBuildVersionArn' \
+                                     --raw-output
+                                 })"
+
+        # Set the output as the build image version
+        echo "::set-output name=build-image-version-arn::${build_image_version_arn}"
+
+
+outputs:
+  build_image_version_arn:
+    description: |
+      "The build image version arn value - used in next step to wait for the image to finish"
+    value: ${{  steps.start-image-pipeline.outputs.build-image-version-arn }}
+
+
+

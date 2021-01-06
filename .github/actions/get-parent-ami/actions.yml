@@ -1,0 +1,76 @@
+# Get the parent ami
+name: Get parent ami
+
+description: |
+  Get parent AMI
+
+runs:
+  using: "composite"
+  steps:
+    - id get-amis-txt
+      shell: bash
+      env:
+        amis_path: ${{ inputs.amis_path }}
+      run: |
+        # Install wget
+        sudo apt-get update -y -qq
+        sudo apt-get install -y -qq \
+          wget
+        # Download amis txt
+        wget \
+          --output-document amis.txt
+          "${amis_path}"
+    - id: get-parent-ami
+      shell: python
+      env:
+        ARCHITECTURE: ${{ inputs.architecture }}
+        OS: ${{ inputs.os }}
+        REGION: ${{ inputs.region }}
+      run: |
+        # Imports
+        import os
+
+        # Get vars
+        architecture = os.environ["ARCHITECTURE"]
+        _os = os.environ["OS"]
+        region = os.environ["REGION"]
+
+        # Check vars
+        if architecture is None or architecture == "":
+          sys.exit(1)
+
+        if _os is None or _os == "":
+          sys.exit(1)
+
+        if region is None or region == "":
+          sys.exit(1)
+
+        # Read in amis.txt
+        with open("amis.txt", "r") as ami_h:
+          for line in ami_h.readlines():
+            # Architecture starts with '##'
+            if line.strip().startswith("##"):
+              architecture_iter = line.strip().lstrip("##").strip()
+              my_dict[architecture_iter] = {}
+              continue
+            # OS starts with just '#'
+            if line.strip().startswith("#"):
+              os_iter = line.strip().lstrip("#").strip()
+              my_dict[architecture_iter][os_iter] = {}
+              continue
+            # Region and ami split by ': '
+            region_iter, ami = line.strip().split(": ", 1)[0]
+            # Assign parent ami to region
+            my_dict[architecture_iter][os_iter][region_iter] = ami
+
+        # Now retrieve the value we were after
+        parent_ami = my_dict[architecture][_os][region]
+
+        # Print parent ami to console
+        print("::set-output name=parent_ami::{}".format(parent_ami))
+
+outputs:
+  parent_ami:
+    description: |
+      The version of AWS Parallel Cluster running
+    value: ${{  steps.get-parent-ami.outputs.parent_ami }}

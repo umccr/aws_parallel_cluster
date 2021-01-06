@@ -14,7 +14,7 @@ phases:
       - name: download_toil_files
         action: S3Download
         inputs:
-          - source: "s3://umccr-research-dev/parallel-cluster/toil/env/*"
+          - source: "__S3_CONFIG_ROOT__/toil/env/*"
             destination: "/opt/toil/env/"
       - name: toil_env_creation
         action: ExecuteBash

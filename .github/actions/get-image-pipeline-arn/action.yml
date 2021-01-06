@@ -1,0 +1,89 @@
+# Get the ami pipeline created on the cdk output stack based on the tags
+
+name: Get image pipeline arn
+
+description: |
+  Use boto3 to get the image pipeline arn based on the tags used in the inputs
+
+runs:
+  using: "composite"
+  steps:
+    - id: get-boto3
+      shell: bash
+      run: |
+        # Update and install pip
+        sudo apt-get update -y -qq
+        sudo apt-get install -y -qq \
+          python3-pip
+        # Use pipe to install boto3
+        pip install boto3
+    - id: get-image-pipeline-arn
+      shell: python
+      env:
+        TAGS: ${{ inputs.tags }}
+      run: |
+        # Imports
+        import sys
+        import os
+        import boto3
+        import time
+        import subprocess
+
+        # Get / split tags
+        """
+        Tags put into string in the format:
+        "Key=a,Value=b Key=c,Value=d"
+        """
+
+        tags = os.environ["TAGS"]
+
+        if tags is None or tags == "":
+          sys.exit(1)
+
+        """
+        Turn tags to format like
+        [{'Key': 'a', 'Value': 'b'}, {'Key': 'c', 'Value': 'd'}]
+        """
+
+        tags = [
+                {tag_item.split("=")[0]: tag_item.split("=")[-1]
+                 for tag_item in tag.split(",", 1)
+                }
+                for tag in tags.split(" ")
+               ]
+
+        # Filters is just the tags but with the attribute "tag:"
+        filters = {}  # Initialise
+        # Iterate through tags and add to filters dict
+        for tag in tags:
+          filters.append({"name": "tag:{}".format(tag["Key"]),
+                          "values": tag["Value"].split(",")
+                         })
+
+        # Set boto3 client
+        client = boto3.client('imagebuilder')
+
+        # Get image response
+        response = client.list_image_pipelines(
+          filters=filters
+        )
+
+        # Get image pipeline list
+        image_pipeline_list = response["imagePipelineList"]
+
+        # Should just be one image pipeline present
+        if not len(image_pipeline_list) == 1:
+          print(image_pipeline_list)
+          sys.exit(1)
+
+        # Retrieve the pipeline arn
+        image_pipeline_arn = image_pipeline_list[0]["arn"]
+
+        # Set final output by printing to stdout
+        print("::set-output name=image-pipeline-arn::{}".format(image_pipeline_arn))
+
+outputs:
+  image_pipeline_arn:
+    description: |
+      "The build image version arn value - used in next step to wait for the image to finish"
+    value: ${{  steps.get-image-pipeline-arn.outputs.image-pipeline-arn }}

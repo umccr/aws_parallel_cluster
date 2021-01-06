@@ -1,0 +1,24 @@
+# Get the ami pipeline created on the cdk output stack based on the tags
+
+name: Get AWS Tags
+
+description: |
+  Get AWS Tags
+
+runs:
+  using: "composite"
+  steps:
+    - id: get-tags-as-str
+      shell: bash
+      env:
+        GIT_TAG_NAME: ${{ inputs.git_tag_name }}
+        STACK_NAME: ${{ inputs.stack_name }}
+      run: |
+        # All we need to do is literally just echo the outputs in tag format
+        echo "::set-output name=tags_str::Key=Stack,Value=${STACK_NAME} Key=GitTag,Value=${GIT_TAG_NAME}"
+
+outputs:
+  tags_str:
+    description: |
+      Tag str va;ie
+    value: ${{  steps.get-tags-as-str.outputs.tags_str }}

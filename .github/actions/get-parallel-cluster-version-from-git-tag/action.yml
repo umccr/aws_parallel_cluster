@@ -1,0 +1,76 @@
+# Get the ami pipeline created on the cdk output stack based on the tags
+
+name: Get parallel cluster version from git tag
+
+description: |
+  Git Tag will look something like
+  * pre-v2.9.1-1.0.3
+  * v2.9.1-1.0.3
+  * latest
+
+runs:
+  using: "composite"
+  steps:
+    - id: get-nonlatest-git-tag
+      shell: bash
+      env:
+        git_tag: ${{ inputs.git_tag }}
+      run: |
+        # Get git commit id
+        commit_id="$(git show-ref --tags "${git_tag}" | {
+                     cut -d' ' -f1
+                    })"
+
+        # Now get git tag from commit id if it isn't 'latest'
+        git_tag="$(git show-ref | {
+                   grep "${commit_id}"
+                  } | {
+                   grep "refs/tags"
+                  } | {
+                   grep -v "refs/tags/latest"
+                  } | {
+                   cut -d' ' -f2
+                  })
+
+        # Set git tag as output for this step
+        echo "::set-output name=git_tag::${git_tag}"
+    - id: get-aws-parallel-cluster-version
+      shell: python
+      env:
+        GIT_TAG: ${{ steps.get-nonlatest-git-tag.outputs.git_tag }}
+      run: |
+        # Imports
+        import sys
+        import os
+        import boto3
+        import time
+        import subprocess
+
+        # Get env vars
+        git_tag = os.environ["GIT_TAG"]
+
+        if git_tag is None or git_tag == "":
+          sys.exit(1)
+
+        # Strip 'refs/tags/' from left side
+        # "refs/tags/v2.9.1-1.0.2" -> "v2.9.1-1.0.2"
+        # "refs/tags/pre-v2.9.1-1.0.2" -> "pre-v2.9.1-1.0.2"
+        git_tag = git_tag.lstrip("refs/tags/"
+
+        # Strip 'pre-' from left side
+        # "pre-v2.9.1-1.0.2" -> "v2.9.1-1.0.2"
+        git_tag = git_tag.lstrip("pre-")
+
+        # Now we have <aws cluster version>-<build-version>
+        parallel_cluster_version = git_tag.split("-", 1)[0]
+        # "v2.9.1-1.0.2" -> "v2.9.1"
+
+        # Return the aws parallel cluster version value
+        print("::set-output name=parallel_cluster_version::{}".format(parallel_cluster_version))
+
+
+outputs:
+  parallel_cluster_version:
+    description: |
+      The version of AWS Parallel Cluster running
+    value: ${{  steps.get-aws-parallel-cluster-version.outputs.parallel_cluster_version }}

@@ -1,0 +1,183 @@
+name: Build Custom AMI
+
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+      - 'pre-v*'  # Push events to matching pre-v, i.e pre-v1.0, pre-v20.15.10
+      - 'latest'
+
+jobs:
+  sync_conda_component_env_yamls:
+    name: Upload to conda component env yamls to s3
+    runs-on: ubuntu-latest
+    ## Only if we're on the main branch
+    #if: github.event.base_ref == 'refs/heads/main'
+    # Steps to run
+    strategy:
+      matrix:
+        include:
+          - aws_access_key_id: UMCCR_DEV_AWS_ACCESS_KEY_ID
+            aws_secret_access_key: UMCCR_DEV_AWS_SECRET_ACCESS_KEY
+            role_to_assume: UMCCR_DEV_AWS_ROLE_TO_ASSUME
+            role_external_id: UMCCR_DEV_AWS_ROLE_EXTERNAL_ID
+          - aws_access_key_id: TOTHILL_AWS_ACCESS_KEY_ID
+            aws_secret_access_key: TOTHILL_AWS_SECRET_ACCESS_KEY
+            role_to_assume: TOTHILL_AWS_ROLE_TO_ASSUME
+            role_external_id: TOTHILL_AWS_ROLE_EXTERNAL_ID
+    steps:
+      # Standard checkout step
+      - name: Checkout code
+        uses: actions/checkout@v2
+      # Get tag name, from /ref/heads/<tag> to <tag>
+      - id: get-tag-name
+        name: Get Tag Name
+        run: echo "::set-output name=tag_name::$(basename ${{ github.ref }})"
+      # Get AWS parallel cluster version
+      - id: get-aws-parallel-cluster-version
+        name: Get AWS Parallel Cluster version
+        run: ./.github/actions/get-parallel-cluster-version-from-git-tag
+        with:
+          git_tag: ${{ steps.get-tag-name.outputs.tag_name }}
+      - id: get-aws-parallel-cluster-version
+        name: Get AWS parallel cluster version
+      # Setup aws credentials so we can sync s3 files
+      - id: configure-aws-credentials
+        name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets[matrix.aws_access_key_id] }}
+          aws-secret-access-key: ${{ secrets[matrix.aws_secret_access_key] }}
+          aws-region: ap-southeast-2
+          role-to-assume: ${{ secrets[matrix.role_to_assume] }}
+          role-external-id: ${{ secrets[matrix.role_external_id] }}
+          role-duration-seconds: 1200
+          #role-session-name: parallel_cluster
+      # Copy files to s3
+      - id: copy-s3-files
+        name: Copy S3 files
+        uses: ./.github/actions/sync-conda-component-env-yamls
+        with:
+          tag_name: ${{ steps.get-tag-name.outputs.tag_name }}
+          ssm_s3_pc_config_root: "/parallel_cluster/main/s3_config_root"
+  deploy_cdk_and_build_aws_image:
+    name: Deploy CDK and Build AWS AMI
+    runs-on: ubuntu-latest
+    needs: sync_conda_component_env_yamls
+    strategy:
+      matrix:
+        include:
+          - aws_access_key_id: UMCCR_DEV_AWS_ACCESS_KEY_ID
+            aws_secret_access_key: UMCCR_DEV_AWS_SECRET_ACCESS_KEY
+            role_to_assume: UMCCR_DEV_AWS_ROLE_TO_ASSUME
+            role_external_id: UMCCR_DEV_AWS_ROLE_EXTERNAL_ID
+          - aws_access_key_id: TOTHILL_AWS_ACCESS_KEY_ID
+            aws_secret_access_key: TOTHILL_AWS_SECRET_ACCESS_KEY
+            role_to_assume: TOTHILL_AWS_ROLE_TO_ASSUME
+            role_external_id: TOTHILL_AWS_ROLE_EXTERNAL_ID
+    steps:
+      # Standard checkout step
+      - name: Checkout code
+        uses: actions/checkout@v2
+      # Get git tag name, from /ref/heads/<tag> to <tag>
+      - id: get-tag-name
+        name: Get Tag Name
+        run: echo "::set-output name=tag_name::$(basename ${{ github.ref }})"
+      # Get AWS parallel cluster version
+      - id: get-aws-parallel-cluster-version
+        name: Get AWS Parallel Cluster version
+        run: ./.github/actions/get-parallel-cluster-version-from-git-tag
+        with:
+          git_tag: ${{ steps.get-tag-name.outputs.tag_name }}
+      - id: get-aws-parallel-cluster-version
+        name: Get AWS parallel cluster version
+      # Setup aws credentials so we can sync s3 files
+      - id: configure-aws-credentials
+        name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets[matrix.aws_access_key_id] }}
+          aws-secret-access-key: ${{ secrets[matrix.aws_secret_access_key] }}
+          aws-region: ap-southeast-2
+          role-to-assume: ${{ secrets[matrix.role_to_assume] }}
+          role-external-id: ${{ secrets[matrix.role_external_id] }}
+          role-duration-seconds: 1200
+      # Set tags as string
+      - id: get-aws-tags
+        name: Get AWS tags as string
+        uses: ./.github/actions/get-aws-tags
+        with:
+          git_tag_name: ${{ steps.get-tag-name.outputs.tag_name }}
+          stack_name: "ParallelCluster"
+      # Get parent ami
+      - id: get-parent-ami
+        name: Get parent AMI
+        uses: ./.github/actions/get-parent-ami
+        with:
+          architecture: "x86_64"
+          os: "alinux2"
+          region: "ap-southeast-2"
+      # Diff/deploy cdk pipeline
+      - name: cdk diff
+        uses: youyo/aws-cdk-github-actions@v1
+        with:
+          cdk_subcommand: 'diff'
+          actions_comment: true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets[matrix.aws_access_key_id] }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets[matrix.aws_secret_access_key] }}
+          AWS_DEFAULT_REGION: ap-southeast-2
+      - name: cdk deploy
+        uses: youyo/aws-cdk-github-actions@v1
+        with:
+          cdk_subcommand: 'deploy'
+          cdk_args: >-
+            --require-approval never
+            --parameters tags="${{ steps.get-aws-tags.outputs.tags_str }}"
+            --parameters s3_read_role="${{ secrets[matrix.role_to_assume] }}"
+            --parameters parent_image="${{ steps.get-parent-ami.outputs.parent_ami }}"
+            --parameters infrastructure_type="t2.medium"
+            --parameters ssm_s3_config_root="/parallel_cluster/main/s3_config_root"
+            --parameters component_version="${{ steps.get-tag-name.outputs.tag_name }}"
+            --parameters recipe_version="${{ steps.get-tag-name.outputs.tag_name }}"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets[matrix.aws_access_key_id] }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets[matrix.aws_secret_access_key] }}
+          AWS_DEFAULT_REGION: ap-southeast-2
+      # Get image pipeline arn from tags
+      - id: get-image-pipeline-arn
+        name: Get AMI Pipeline ARN
+        uses: ./.github/actions/get-image-pipeline-arn
+        with:
+          tags: ${{ steps.get-aws-tags.outputs.tags_str }}
+      # Build image from pipeline
+      - id: execute-image-creation-pipeline
+        name: execute_image_creation_pipeline
+        uses: ./.github/actions/start-ami-pipeline-execution
+        with:
+          image_pipeline_arn:  ${{ steps.get-image-pipeline-arn.outputs.image_pipeline_arn }}
+      # Wait for image pipeline version to complete
+      - id: poll-ami-pipeline-status
+        name: Poll AMI pipeline status
+        uses: ./.github/actions/poll-ami-pipeline-status
+        with:
+          image_build_version_arn: ${{ steps.execute-image-creation-pipeline.outputs.image_build_version_arn }}
+      # Get image from image version arn step
+      - id: get-ami
+        name: Get AMI
+        uses: ./.github/actions/get-ami-from-image-arn
+        with:
+          image_pipeline_arn: ${{ steps.get-image-pipeline-arn.outputs.image_pipeline_arn }}
+          image_build_version_arn: ${{ steps.execute-image-creation-pipeline.outputs.image_build_version_arn }}
+      # Add tags to image
+      - id: add-tags-to-image
+        name: Add tags to image
+        uses: ./.github/actions/add-tags-to-image
+        with:
+          ami: ${{ steps.get-ami-outputs.ami }}
+          tags: ${{ steps.get-aws-tags.outputs.tags_str }}
+
+
+
+
