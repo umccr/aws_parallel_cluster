@@ -150,7 +150,7 @@ if ! has_jq; then
 fi
 
 if ! check_conda_version; then
-  echo_stderr "Please run 'conda update -n base conda'"
+  echo_stderr "Your conda version is out of date, please run \"conda update -n base -c defaults conda\" before continuing"
   exit 1
 fi
 
@@ -159,49 +159,71 @@ fi
 #########################
 
 if ! has_conda_env; then
-  echo_stderr "pcluster conda env does not exist. Creating"
-  conda env create \
-    --quiet \
-    --name "${PCLUSTER_CONDA_ENV_NAME}" \
-    --file "${CONDA_ENV_FILE}"
+  echo_stderr "pcluster conda env does not exist - would you like to create one?"
+    select yn in "Yes" "No"; do
+    case "$yn" in
+        "Yes" )
+          conda env create \
+            --quiet \
+            --name "${PCLUSTER_CONDA_ENV_NAME}" \
+            --file "${CONDA_ENV_FILE}"
+          break;;
+        "No" )
+          echo_stderr "Installation cancelled"
+          exit 0;;
+    esac
+  done
+
 else
-  echo_stderr "Found conda env 'pcluster' - running update"
-  conda env update \
-    --quiet \
-    --name "${PCLUSTER_CONDA_ENV_NAME}" \
-    --file "${CONDA_ENV_FILE}"
+  echo_stderr "Found conda env 'pcluster' - would you like to run an update?"
+  select yn in "Yes" "No"; do
+    case "$yn" in
+        "Yes" )
+          conda env update \
+            --quiet \
+            --name "${PCLUSTER_CONDA_ENV_NAME}" \
+            --file "${CONDA_ENV_FILE}"
+          break;;
+        "No" )
+          echo_stderr "Installation cancelled"
+          exit 0;;
+    esac
+  done
 fi
 
 # Now we can obtain the env prefix which is where we will place our
 conda_pcluster_env_prefix="$(get_conda_env_prefix)"
 
-##################
-# COPY CONFIG
-##################
-
-echo_stderr "Adding pcluster.conf to \"${conda_pcluster_env_prefix}/etc/pcluster.conf\""
-mkdir -p "${conda_pcluster_env_prefix}/etc/"
-cp "$(get_this_path)/conf/pcluster.conf" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
-
-
-# Ensure that if we're installing from the git repo, that we turn '__VERSION__' into 'latest'
-if [[ "${OSTYPE}" == "darwin"* ]]; then
-    sed -i "" "s/__VERSION__/latest/g" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
-else
-    sed -i "s/__VERSION__/latest/g" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
-fi
-
 ###########
 # COPY BINS
 ###########
 
-echo_stderr "Adding scripts to \"${conda_pcluster_env_prefix}/bin\""
+echo_stderr "Adding python scripts to \"${conda_pcluster_env_prefix}/bin\""
 # Ensure all the scripts are executable
-find "$(get_this_path)/bin/" -maxdepth 1 -type f -name "*.sh" -exec chmod +x {} \;
+find "$(get_this_path)/bin/" \
+  -mindepth 1 -maxdepth 1 \
+  -type f -name "*.py" \
+  -exec chmod +x {} \;
 
 # Copy over to conda env
 rsync --archive \
-  --include='*.sh' --exclude='*'\
+  --include='*.py' --exclude='*'\
   "$(get_this_path)/bin/" "${conda_pcluster_env_prefix}/bin/"
 
+#################
+# REPLACE VERSION
+#################
+
+: '
+Only needed in the event that one is installing from source
+'
+
+sed "s/__VERSION__/latest/" \
+  "${conda_pcluster_env_prefix}/bin/umccr_utils/version.py" > \
+  "${conda_pcluster_env_prefix}/bin/umccr_utils/version.py.tmp"
+mv "${conda_pcluster_env_prefix}/bin/umccr_utils/version.py.tmp" \
+  "${conda_pcluster_env_prefix}/bin/umccr_utils/version.py"
+
+
 echo_stderr "Installation Complete!"
+
