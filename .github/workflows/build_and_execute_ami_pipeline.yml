@@ -118,6 +118,13 @@ jobs:
           architecture: "x86_64"
           os: "alinux2"
           region: "ap-southeast-2"
+      # Get s3_config_root ssm parameter value
+      - id: get-s3-config-root-ssm-value
+        name: Get S3 Config Root ssm value
+        uses: ./.github/actions/get-aws-ssm-parameter-value
+        with:
+          ssm_parameter_key: "/parallel_cluster/main/s3_config_root"
+          ssm_parameter_type: "String"
       # Diff/deploy cdk pipeline
       - name: cdk diff
         uses: youyo/aws-cdk-github-actions@v1
@@ -133,12 +140,11 @@ jobs:
         with:
           cdk_subcommand: 'deploy'
           cdk_args: >-
-            --require-approval never
             --parameters tags="${{ steps.get-aws-tags.outputs.tags_str }}"
             --parameters s3_read_role="${{ secrets[matrix.role_to_assume] }}"
             --parameters parent_image="${{ steps.get-parent-ami.outputs.parent_ami }}"
             --parameters infrastructure_type="t2.medium"
-            --parameters ssm_s3_config_root="/parallel_cluster/main/s3_config_root"
+            --parameters s3_config_root="${{ steps.get-s3-config-root-ssm-value.outputs.parameter_value }}"
             --parameters git_tag="${{ steps.get-tag-name.outputs.tag_name }}"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets[matrix.aws_access_key_id] }}

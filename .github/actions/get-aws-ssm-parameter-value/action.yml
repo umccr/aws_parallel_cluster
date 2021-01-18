@@ -1,0 +1,61 @@
+# Get the ami pipeline created on the cdk output stack based on the tags
+
+name: Get AWS SSM Parameter
+
+description: |
+  Given a SSM Parameter key and type, return the ssm parameter value
+
+runs:
+  using: "composite"
+  steps:
+    - id: get-boto3
+      shell: bash
+      run: |
+        # Update and install pip
+        sudo apt-get update -y -qq
+        sudo apt-get install -y -qq \
+          python3-pip
+        # Use pipe to install boto3
+        pip install boto3
+    - id: get-parameter-value
+      shell: python
+      env:
+        SSM_PARAMETER_KEY: ${{ inputs.ssm_parameter_key }}
+        SSM_PARAMETER_TYPE: ${{ inputs.ssm_parameter_type }}
+      run: |
+        # Imports
+        import sys
+        import os
+        import boto3
+        import time
+        import subprocess
+
+        # Get env vars
+        ssm_parameter_key = os.environ["SSM_PARAMETER_KEY"]
+
+        # Build image version
+        ssm_parameter_type = os.environ["SSM_PARAMETER_TYPE"]
+
+        # Check values are present
+        if ssm_parameter_key is None or ssm_parameter_key == "":
+          sys.exit(1)
+        if ssm_parameter_type is None or ssm_parameter_type == "":
+          sys.exit(1)
+
+        # Set boto3 client
+        client = boto3.client('ssm')
+
+        # Get ssm parameter
+        encrypted = True if ssm_parameter_type == "encrypted" else Fase
+        parameter_value = ssm.get_parameter(Name=ssm_parameter_name,
+                                            WithDecryption=encrypted)
+
+        # Return the parameter value
+        print("::set-output name=parameter_value::{}".format(parameter_value))
+
+
+outputs:
+  parameter_value:
+    description: |
+      The ssm parameter value
+    value: ${{  steps.get-parameter-value.outputs.parameter_value }}

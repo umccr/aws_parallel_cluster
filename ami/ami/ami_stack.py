@@ -48,46 +48,11 @@ def create_asset_from_component(stack_obj, component_path, role):
     return asset_obj
 
 
-def tags_str_to_list(tags):
-    """
-    Convert tags from a "Key=a,Value=b Key=c,Value=d" string to
-    [
-     {"Key": "a",
-      "Value": "b"
-     },
-     {"Key": "c",
-      "Value": "d"
-     }
-    ]
-    """
-
-    tags = [
-        {tag_item.split("=")[0]: tag_item.split("=")[-1]
-         for tag_item in tag.split(",", 1)
-         }
-        for tag in tags.split(" ")
-    ]
-
-    return tags
-
-
 class AmiStack(core.Stack):
-    def __init__(self, scope: core.Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: core.Construct, construct_id: str, props: dict, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # The code that defines your stack goes here
-        s3_read_role = core.CfnParameter(self, id="s3_read_role", type="String")
-        parent_image = core.CfnParameter(self, id="parent_image", type="String")
-        infrastructure_type = core.CfnParameter(self, id="infrastructure_type", type="String")
-        git_tag = core.CfnParameter(self, id="git_tag", type="String")
-        tags_str = core.CfnParameter(self, id="tags", type="String")
-        s3_config_root_ssm_key = core.CfnParameter(self, id="ssm_s3_config_root", type="String")
-
         # Set tags as list of dicts instead
-        tags_list = tags_str_to_list(tags_str)
-
-        # Get SSM value for S3 Config Root
-        s3_config_root_ssm_value = ssm.StringParameter.value_for_string_parameter(self, s3_config_root_ssm_key.value_as_string)
 
         # Get yaml components in upper directory.
         sorted_component_paths = sorted(Path("../components/").glob('**/*.yml'))
@@ -100,8 +65,8 @@ class AmiStack(core.Stack):
         for component_path in sorted_component_paths:
             tmp_component_path = Path(replace_string_in_file(component_path,
                                                              ["__S3_CONFIG_ROOT__", "__VERSION__"],
-                                                             [s3_config_root_ssm_value, git_tag.value_as_string]))
-            component_s3_asset_objs.append(create_asset_from_component(self, tmp_component_path, s3_read_role))
+                                                             [props["s3_config_root"], props["git_tag"]]))
+            component_s3_asset_objs.append(create_asset_from_component(self, tmp_component_path, props["s3_read_role"]))
 
         component_objs = []
         for s3_asset_obj in component_s3_asset_objs:
@@ -109,7 +74,7 @@ class AmiStack(core.Stack):
                                                             s3_asset_obj.name,
                                                             name=s3_asset_obj.name,
                                                             platform="Linux",
-                                                            version=git_tag.value_as_string,
+                                                            version=props["git_tag"],
                                                             uri=s3_asset_obj.attr_arn,
                                                             ))
 
@@ -117,12 +82,14 @@ class AmiStack(core.Stack):
         recipe_obj = imagebuilder.CfnImageRecipe(self,
                                                  "parallelClusterImageRecipe",
                                                  name="parallelClusterImageRecipe",
-                                                 version=git_tag.value_as_string,
+                                                 version=props["git_tag"],
                                                  components=component_objs,
-                                                 parent_image=parent_image.value_as_string,
+                                                 parent_image=props["parent_image"],
+                                                 tags={"Stack": "ParallelCluster",
+                                                       "GitTag": props["git_tag"]},
                                                  )
         # Add tags to recipe object
-        for tag_dict in tags_list:
+        for tag_dict in props["tags"]:
             core.Tags.of(recipe_obj).add(tag_dict["Key"], tag_dict["Value"])
 
         # Get VPC
@@ -134,7 +101,7 @@ class AmiStack(core.Stack):
         # Create security group object
         sg = ec2.SecurityGroup(self, id="parallelClusterImageCreationSecurityGroup", vpc=vpc)
         # Tag security group
-        for tag_dict in tags_list:
+        for tag_dict in props["tags"]:
             core.Tags.of(sg).add(tag_dict["Key"], tag_dict["Value"])
 
         # Create infrastructure
@@ -142,11 +109,11 @@ class AmiStack(core.Stack):
                                                                          "parallelClusterInfrastructure",
                                                                          name="parallelClusterInfrastructure",
                                                                          instance_profile_name="parallelClusterInstanceProfile",
-                                                                         instance_types=[infrastructure_type.value_as_string],
+                                                                         instance_types=[props["infrastructure_type"]],
                                                                          subnet_id=subnet.subnet_id,
                                                                          security_group_ids=[sg.security_group_id])
         # Add tags to infrastructure object
-        for tag_dict in tags_list:
+        for tag_dict in props["tags"]:
             core.Tags.of(infrastructure_obj).add(tag_dict["Key"], tag_dict["Value"])
 
         # Create Pipeline
@@ -156,7 +123,7 @@ class AmiStack(core.Stack):
                                                      image_recipe_arn=recipe_obj.attr_arn,
                                                      infrastructure_configuration_arn=infrastructure_obj.attr_arn)
         # Tag pipeline
-        for tag_dict in tags_list:
+        for tag_dict in props["tags"]:
             core.Tags.of(infrastructure_obj).add(tag_dict["Key"], tag_dict["Value"])
 
         # Return pipeline object attribute arn
