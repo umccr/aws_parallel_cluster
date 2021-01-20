@@ -140,6 +140,19 @@ sbatch --job-name "linx-download" \
           rm \"${REF_DIR_HARTWIG}/linx.zip\""
 ```
 
+#### Ensembl files
+
+```{bash download_linx_files, echo=TRUE, eval=FALSE}
+direct_download_link="https://nextcloud.hartwigmedicalfoundation.nl/s/LTiKTd8XxBqwaiC/download?path=%2FHMFTools-Resources%2FEnsembl"
+sbatch --job-name "ensembl-download" \
+  --output logs/ensembl_cache_download_logs.log --error logs/ensembl_cache_download_logs.log \
+  --partition=compute-long \
+  --wrap "wget --output-document ${REF_DIR_HARTWIG}/ensembl_cache.zip \
+            \"${direct_download_link}\" && \
+          unzip -d \"${REF_DIR_HARTWIG}/\" \"${REF_DIR_HARTWIG}/ensembl_cache.zip\" && \
+          rm \"${REF_DIR_HARTWIG}/ensembl_cache.zip\""
+```
+
 ### Command for umccr-refdata-dev dataset
 
 For running through hg38, we need a reference set.
