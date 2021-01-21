@@ -4,7 +4,17 @@
 Global params - mostly used to generate the configuration file
 """
 
+from version import version
+from aws_wrappers import get_parallel_cluster_s3_path
+from aws_wrappers import get_ami_id
+
 AWS_REGION = "ap-southeast-2"
+
+AWS_SSM_PARAMETER_KEYS = {
+    "s3_config_root": "/parallel_cluster/main/s3_config_root"
+}
+
+AWS_PARALLEL_CLUSTER_STACK_NAME = "ParallelCluster"
 
 UOM_IP_RANGE = ""  # TODO
 
@@ -91,10 +101,15 @@ AWS_CLUSTER_BASICS = {
     "s3_read_resource": "*",
     "additional_iam_policies": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
     "scheduler": "slurm",
-    # FIXME update __VERSION__ in 'pre_install' and 'post_install' globals? - could be done install.sh side?
-    "pre_install": "s3://tothill-parallel-cluster-dev/__VERSION__/bootstrap/pre_install.sh",
-    "post_install": "s3://tothill-parallel-cluster-dev/__VERSION__/bootstrap/post_install.sh",
-    "custom_ami": "ami-074416eece29e32ec",  # FIXME - this should be retrieved from somewhere, like an ssm parameter
+    "pre_install": "s3://{}/{}/bootstrap/pre_install.sh".format(
+        get_parallel_cluster_s3_path(AWS_SSM_PARAMETER_KEYS["s3_config_root"]),
+        version
+    ),
+    "post_install": "s3://{}/{}/bootstrap/post_install.sh".format(
+        get_parallel_cluster_s3_path(AWS_SSM_PARAMETER_KEYS["s3_config_root"]),
+        version
+    ),
+    "custom_ami": get_ami_id(version),
     "master_root_volume_size": "45",
     "compute_root_volume_size": "60"
 }

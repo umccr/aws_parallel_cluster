@@ -67,3 +67,9 @@ class PClusterInstanceError(Exception):
     """
     pass
 
+
+class AMINotFoundError(Exception):
+    """
+    Could not find the ami based on the tags created
+    """
+    pass

@@ -9,9 +9,10 @@ import os
 from pathlib import Path
 import getpass
 from umccr_utils.logger import get_logger
-from umccr_utils.errors import NoCondaEnvError
+from umccr_utils.errors import NoCondaEnvError, PClusterVersionFailure, AWSVersionFailureError, AWSCredentialsError
 from umccr_utils.aws_wrappers import get_aws_version, get_user as get_aws_user
 import json
+from packaging import version
 
 logger = get_logger()
 
@@ -43,9 +44,12 @@ def get_pcluster_version():
     :return:
     """
 
-    # TODO
+    pcluster_version_command = ["pcluster", "version"]
 
-    return None
+    pcluster_version_returncode, pcluster_version_output, pcluster_version_error = \
+        run_subprocess_proc(pcluster_version_command)
+
+    return pcluster_version_output
 
 
 def check_env():
@@ -60,16 +64,16 @@ def check_env():
     :return:
     """
     if get_conda_env() is not "pcluster":
-        raise CondaEnvError
+        raise NoCondaEnvError
 
     if get_pcluster_version() is None:
-        raise PClusterVersionError
+        raise PClusterVersionFailure
 
-    if get_aws_version(): # TODO check >= 2
-        raise AWSVersionError
+    if not version.parse(get_aws_version()) >= version.parse("2.0.0"):
+        raise AWSVersionFailureError
 
     if get_aws_user() is None:
-        raise AWSLoginError
+        raise AWSCredentialsError
 
 
 def get_user():

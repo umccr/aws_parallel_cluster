@@ -9,10 +9,14 @@ from botocore.exceptions import UnauthorizedSSOTokenError
 from miscell import run_subprocess_proc, get_user
 from logger import get_logger
 from packaging import version
-from umccr_utils.errors import NoLocalIPError, AWSCredentialsError, AWSBinaryNotFoundError, AWSVersionFailureError, PClusterBinaryNotFoundError, PClusterVersionFailure, PClusterInstanceError
-from umccr_utils.globals import AWS_REGION, AWS_ACCOUNT_MAPPING
+from umccr_utils.errors import NoLocalIPError, AWSCredentialsError, AWSBinaryNotFoundError, AWSVersionFailureError, \
+    PClusterBinaryNotFoundError, PClusterVersionFailure, PClusterInstanceError, AMINotFoundError
+from umccr_utils.globals import AWS_REGION, AWS_ACCOUNT_MAPPING, AWS_PARALLEL_CLUSTER_STACK_NAME
+from datetime import datetime
 
 logger = get_logger()
+
+CREATION_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
 def get_aws_account_name():
@@ -29,6 +33,16 @@ def get_aws_account_name():
         raise AWSCredentialsError
 
     return AWS_ACCOUNT_MAPPING[account]
+
+
+def get_parallel_cluster_ami_stack_name():
+    """
+    Returns AWS_PARALLEL_CLUSTER_STACK_NAME global
+    Must be identical to the stack tag given in the cdk ami
+    :return:
+    """
+
+    return AWS_PARALLEL_CLUSTER_STACK_NAME
 
 
 def check_credentials():
@@ -177,6 +191,69 @@ def get_local_ip():
     return get_local_ip_stdout
 
 
+def get_parallel_cluster_s3_path(s3_path_ssm_parameter_key):
+    """
+    Get the base path for the parallel cluster s3 location
+    :return:
+    """
+
+    s3_path_ssm_parameter_key = "/parallel_cluster/main/s3_config_root"
+
+    s3_path_ssm_parameter_value = ssm_parameter_value(s3_path_ssm_parameter_key,
+                                                      encrypted=False)
+
+    return s3_path_ssm_parameter_value
+
+
+def get_ami_id(version):
+    """
+    Get the ami id for this version of aws parallel cluster
+    Uses a tag based approach to find the correct ami for this parallel cluster version
+    :param version:
+    :return:
+    """
+
+    ec2 = boto3.client("ec2")
+
+    images_dict = ec2.describe_images(
+            ExecutableUsers=["self"],
+            Filters=[
+                {
+                    "Name": "tag:Stack",
+                    "Values": [
+                        get_parallel_cluster_ami_stack_name()
+                    ]
+                },
+                {
+                    "Name": "tag:Version",
+                    "Values": [
+                        version
+                    ]
+                }
+            ],
+            Owners=["self"]
+        )
+
+    # Check if there's only one image (which there should be)
+    if len(images_dict["Images"]) == 0:
+        logger.error("Could not retrieve the image id")
+        logger.error("No image with the the stack tag '{}' and version tags '{}' could be found for this aws user".format(
+            get_parallel_cluster_ami_stack_name(), version
+        ))
+        raise AMINotFoundError
+    elif len(images_dict["Images"]) == 1:
+        return images_dict["Images"][0]["ImageId"]
+    else:
+        # Get the latest created image
+        latest_creation = None
+        for image in images_dict["Images"]:
+            if latest_creation is None or \
+                datetime.strptime(image["CreationDate"], CREATION_TIME_FORMAT) > \
+                    datetime.strptime(latest_creation["CreationDate"], CREATION_TIME_FORMAT):
+                latest_creation = image
+        return latest_creation["ImageId"]
+
+
 def get_parallel_cluster_tags(tags):
     """
     Get the tags for the parallel cluster command
@@ -221,3 +298,5 @@ def ssm_parameter_value(ssm_parameter_name, encrypted=False):
                                   WithDecryption=encrypted)
 
     return parameter
+
+
