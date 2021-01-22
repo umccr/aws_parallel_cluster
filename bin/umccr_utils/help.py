@@ -69,6 +69,8 @@ def get_parallel_cluster_extended_help():
     
     """.format(get_ssm_login_help())
 
+    return getting_started_help
+
 
 def print_extended_help():
     """

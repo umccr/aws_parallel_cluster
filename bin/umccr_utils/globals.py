@@ -4,9 +4,7 @@
 Global params - mostly used to generate the configuration file
 """
 
-from version import version
-from aws_wrappers import get_parallel_cluster_s3_path
-from aws_wrappers import get_ami_id
+from umccr_utils.version import version
 
 AWS_REGION = "ap-southeast-2"
 
@@ -101,15 +99,6 @@ AWS_CLUSTER_BASICS = {
     "s3_read_resource": "*",
     "additional_iam_policies": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
     "scheduler": "slurm",
-    "pre_install": "s3://{}/{}/bootstrap/pre_install.sh".format(
-        get_parallel_cluster_s3_path(AWS_SSM_PARAMETER_KEYS["s3_config_root"]),
-        version
-    ),
-    "post_install": "s3://{}/{}/bootstrap/post_install.sh".format(
-        get_parallel_cluster_s3_path(AWS_SSM_PARAMETER_KEYS["s3_config_root"]),
-        version
-    ),
-    "custom_ami": get_ami_id(version),
     "master_root_volume_size": "45",
     "compute_root_volume_size": "60"
 }
@@ -119,6 +108,6 @@ AWS_ALIASES = {
 }
 
 AWS_ACCOUNT_MAPPING = {
-    "umccr_dev": "843407916570",
-    "tothill": "206808631540"
+    "843407916570": "umccr_dev",
+    "206808631540": "tothill"
 }

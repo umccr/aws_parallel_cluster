@@ -776,29 +776,32 @@ case "${cfn_node_type}" in
       echo_stderr "Adding sinteractive command to /usr/local/bin"
       get_sinteractive_command
       # Modify Slurm Port Range
-      echo_stderr "Modifying slurm port range - done before trying connect to slurm database"
-      modify_slurm_port_range
+      # TODO - confirm this is no longer necessary
+      #echo_stderr "Modifying slurm port range - done before trying connect to slurm database"
+      #modify_slurm_port_range
       # Connect slurm to rds
       echo_stderr "Connecting to slurm rds database"
       connect_sacct_to_mysql_db
+      # TODO - confirm this is no longer necessary
       # cloud_watch_fix
-      echo_stderr "Fixing loop_time bug to stop escalation of cloud watch errors"
-      cloud_watch_master_fix
+      #echo_stderr "Fixing loop_time bug to stop escalation of cloud watch errors"
+      #cloud_watch_master_fix
       # Update base conda env
       echo_stderr "Updating base conda env"
       update_base_conda_env
       # Update bcbio conda env
-      echo_stderr "Updating bcbio-env"
-      update_bcbio_env
+      # TODO - reupload cromwell and bcbio scripts into ami
+      #echo_stderr "Updating bcbio-env"
+      #update_bcbio_env
       # Update cromwell env
-      echo_stderr "Update cromwell conda env for ec2-user"
-      update_cromwell_env
+      #echo_stderr "Update cromwell conda env for ec2-user"
+      #update_cromwell_env
       # Update toil env
       echo_stderr "Update the toil env for ec2-user"
       update_toil_env
       # Start cromwell service
-      echo_stderr "Creating start cromwell script"
-      create_start_cromwell_script
+      #echo_stderr "Creating start cromwell script"
+      #create_start_cromwell_script
       # Write SHARED_DIR env var to bashrc
       echo_stderr "Setting SHARED_DIR for user"
       write_shared_dir_to_bashrc
@@ -810,8 +813,8 @@ case "${cfn_node_type}" in
       get_github_access
     ;;
     ComputeFleet)
-      echo_stderr "Fixing loop_time bug to stop escalation of cloud watch errors"
-      cloud_watch_compute_fix
+      #echo_stderr "Fixing loop_time bug to stop escalation of cloud watch errors"
+      #cloud_watch_compute_fix
     ;;
     *)
       # Do nothing

@@ -6,13 +6,14 @@ AWS commands to run and validate outputs from
 
 import boto3
 from botocore.exceptions import UnauthorizedSSOTokenError
-from miscell import run_subprocess_proc, get_user
-from logger import get_logger
+from umccr_utils.miscell import run_subprocess_proc, get_user
+from umccr_utils.logger import get_logger
 from packaging import version
 from umccr_utils.errors import NoLocalIPError, AWSCredentialsError, AWSBinaryNotFoundError, AWSVersionFailureError, \
     PClusterBinaryNotFoundError, PClusterVersionFailure, PClusterInstanceError, AMINotFoundError
 from umccr_utils.globals import AWS_REGION, AWS_ACCOUNT_MAPPING, AWS_PARALLEL_CLUSTER_STACK_NAME
 from datetime import datetime
+import shlex
 
 logger = get_logger()
 
@@ -74,7 +75,7 @@ def get_aws_version():
     aws_type_command = ["type", "-p", "aws"]  # Should return /usr/local/bin/aws
 
     # Run through subprocess wrapper
-    aws_type_return, aws_type_stdout, aws_type_stderr = run_subprocess_proc(aws_type_command,
+    aws_type_return, aws_type_stdout, aws_type_stderr = run_subprocess_proc(["bash", "-c", shlex.join(aws_type_command)],
                                                                             capture_output=True)
 
     if not aws_type_return == 0:
@@ -93,7 +94,7 @@ def get_aws_version():
                              for command_version in aws_version_stdout.split(" ")]
 
     # Check aws-cli is in commands
-    if 'aws-cli' not in [command for command in command_version_split]:
+    if 'aws-cli' not in [command[0] for command in command_version_split]:
         logger.error("Could not find aws-cli version in \"{}\"".format(aws_version_stdout))
         raise AWSVersionFailureError
 
@@ -197,8 +198,6 @@ def get_parallel_cluster_s3_path(s3_path_ssm_parameter_key):
     :return:
     """
 
-    s3_path_ssm_parameter_key = "/parallel_cluster/main/s3_config_root"
-
     s3_path_ssm_parameter_value = ssm_parameter_value(s3_path_ssm_parameter_key,
                                                       encrypted=False)
 
@@ -216,7 +215,6 @@ def get_ami_id(version):
     ec2 = boto3.client("ec2")
 
     images_dict = ec2.describe_images(
-            ExecutableUsers=["self"],
             Filters=[
                 {
                     "Name": "tag:Stack",
@@ -297,6 +295,9 @@ def ssm_parameter_value(ssm_parameter_name, encrypted=False):
     parameter = ssm.get_parameter(Name=ssm_parameter_name,
                                   WithDecryption=encrypted)
 
-    return parameter
+    if "Parameter" not in parameter.keys():
+        logger.error("")
+    # FIXME - check first
+    return parameter["Parameter"]["Value"]
 
 

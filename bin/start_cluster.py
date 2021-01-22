@@ -8,16 +8,19 @@ import argparse
 import json
 from json.decoder import JSONDecodeError
 from umccr_utils.logger import get_logger
-from umccr_utils.aws_wrappers import get_master_ec2_instance_id_from_pcluster_id, get_aws_account_name
+from umccr_utils.aws_wrappers import get_master_ec2_instance_id_from_pcluster_id, get_aws_account_name, \
+    get_parallel_cluster_s3_path, get_ami_id
 import tempfile
-from umccr_utils.miscell import json_to_str, run_subprocess_proc, check_env
+from umccr_utils.checks import check_env
+from umccr_utils.miscell import json_to_str, run_subprocess_proc
 from umccr_utils.help import print_extended_help
 from umccr_utils.errors import PClusterCreateError
 import configparser
 from umccr_utils.globals import \
-    AWS_GLOBAL_SETTINGS, AWS_REGION, AWS_CLUSTER_BASICS, AWS_NETWORK, \
+    AWS_GLOBAL_SETTINGS, AWS_REGION, AWS_CLUSTER_BASICS, AWS_SSM_PARAMETER_KEYS, AWS_NETWORK, \
     AWS_PARTITION_QUEUES, AWS_FILESYSTEM, AWS_COMPUTE_RESOURCES, AWS_ALIASES
 import sys
+from umccr_utils.version import version
 
 logger = get_logger()
 
@@ -54,6 +57,7 @@ def get_args():
 
     parser.add_argument("--help-ext",
                         help="Print extended help",
+                        action="store_true",
                         required=False)
 
     args = parser.parse_args()
@@ -105,7 +109,8 @@ def collate_pcluster_create_cli(cluster_name, configuration_file, extra_paramete
     :return:
     """
     pcluster_create_command = ["pcluster", "create",
-                               "--config", configuration_file]
+                               "--config", configuration_file.name,
+                               "--cluster-template", cluster_name]
 
     if extra_parameters is not None:
         pcluster_create_command.extend(["--extra-parameters", json_to_str(extra_parameters)])
@@ -137,19 +142,31 @@ def create_configuration_file(args):
     :return:
     """
 
-    configuration_temp_file = tempfile.NamedTemporaryFile()
+    configuration_temp_file = tempfile.NamedTemporaryFile(delete=False)
 
     pcluster_config = configparser.ConfigParser()
 
     # Add aws and globals settings
-    pcluster_config["aws"] = {"region": AWS_REGION}
+    pcluster_config["aws"] = {"aws_region_name": AWS_REGION}
     pcluster_config["globals"] = AWS_GLOBAL_SETTINGS
 
     # Intialise cluster
-    pcluster_config["cluster {}".format(args.cluster_name)] = AWS_CLUSTER_BASICS
+    cluster_basics = AWS_CLUSTER_BASICS.copy()
+    # Add pre-install and post-install attributes
+    cluster_basics["pre_install"] = "{}/{}/bootstrap/pre_install.sh".format(
+        get_parallel_cluster_s3_path(AWS_SSM_PARAMETER_KEYS["s3_config_root"]),
+        version
+    )
+    cluster_basics["post_install"] = "{}/{}/bootstrap/post_install.sh".format(
+        get_parallel_cluster_s3_path(AWS_SSM_PARAMETER_KEYS["s3_config_root"]),
+        version
+    )
+    # Add ami
+    cluster_basics["custom_ami"] = get_ami_id(version)
+    pcluster_config["cluster {}".format(args.cluster_name)] = cluster_basics
 
     # Add in network settings:
-    pcluster_config["vpc {}_network".format(args.cluster_name)] = AWS_NETWORK[get_aws_account_name()]
+    pcluster_config["vpc {}_network".format(args.cluster_name)] = AWS_NETWORK[get_aws_account_name()]["network"]
     pcluster_config["cluster {}".format(args.cluster_name)]["vpc_settings"] = "{}_network".format(args.cluster_name)
 
     # Add in file system settings
@@ -160,7 +177,16 @@ def create_configuration_file(args):
 
     # Add queue settings to cluster config for each queue
     for queue_name, queue_dict in AWS_PARTITION_QUEUES.items():
-        pcluster_config["queue {}".format(queue_name)] = queue_dict
+        # Create a tmp copy
+        modified_queue_dict = queue_dict.copy()
+        # Modify each in the list to match the compute resources below
+        compute_type = queue_dict["compute_type"]
+        extended_compute_resources = []
+        for compute_resource in modified_queue_dict["compute_resource_settings"]:
+            extended_compute_resources.append("{}_{}".format(compute_resource, compute_type))
+        modified_queue_dict["compute_resource_settings"] = ', '.join(extended_compute_resources)
+        pcluster_config["queue {}".format(queue_name)] = modified_queue_dict
+
     pcluster_config["cluster {}".format(args.cluster_name)]["queue_settings"] = \
         ", ".join(list(AWS_PARTITION_QUEUES.keys()))
 
@@ -174,6 +200,10 @@ def create_configuration_file(args):
     # Add aliases to cluster config
     pcluster_config["aliases"] = AWS_ALIASES
 
+    # Write config to file
+    with open(configuration_temp_file.name, 'w') as config_h:
+        pcluster_config.write(config_h)
+
     return configuration_temp_file
 
 
@@ -183,7 +213,7 @@ def run_pcluster_create(pcluster_create_command):
     :return:
     """
     pcluster_create_returncode, pcluster_create_stdout, pcluster_create_stderr = \
-        run_subprocess_proc(pcluster_create_command)
+        run_subprocess_proc(pcluster_create_command, capture_output=True)
 
     if not pcluster_create_returncode == 0:
         logger.error("Failed to create the stack successfully")
@@ -222,7 +252,7 @@ def main():
 
     args = get_args()
 
-    if getattr(args, "help_ext", None) is not None:
+    if getattr(args, "help_ext", False):
         print_extended_help()
         sys.exit(0)
 
@@ -233,11 +263,11 @@ def main():
 
     configuration_file = create_configuration_file(args)
 
-    pcluster_create_command = collate_pcluster_create_cli(cluster_name=args.cluster_name,
+    pcluster_create_command = collate_pcluster_create_cli(cluster_name=getattr(args, "cluster_name", None),
                                                           configuration_file=configuration_file,
-                                                          extra_parameters=args.extra_parameters_json,
-                                                          tags=args.tags_json,
-                                                          no_rollback=args.no_rollback)
+                                                          extra_parameters=getattr(args, "extra_parameters_json", None),
+                                                          tags=getattr(args, "tags_json", None),
+                                                          no_rollback=getattr(args, "no_rollback", None))
 
     run_pcluster_create(pcluster_create_command)
 
