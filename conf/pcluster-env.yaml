@@ -5,6 +5,7 @@ channels:
   - pandas
 dependencies:
   - jq
+  - python=3.8
   - pip
   - pip:
     - aws-parallelcluster == 2.9.1

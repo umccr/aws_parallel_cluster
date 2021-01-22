@@ -7,7 +7,7 @@ Simple script that:
 3. Adds scripts to bin subdir in <pcluster_conda_prefix>
 '
 
-set -euxo pipefail
+set -euo pipefail
 
 ###########
 # CHECKS
@@ -207,8 +207,17 @@ find "$(get_this_path)/bin/" \
 
 # Copy over to conda env
 rsync --archive \
-  --include='*.py' --exclude='*'\
+  --include='*.py' --exclude='*' \
   "$(get_this_path)/bin/" "${conda_pcluster_env_prefix}/bin/"
+
+###########
+# COPY LIBS
+###########
+
+# Copy over umccr_utils to library path
+rsync --archive \
+  --include='*.py' --exclude='*' \
+  "$(get_this_path)/bin/umccr_utils/" "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/"
 
 #################
 # REPLACE VERSION
@@ -219,11 +228,14 @@ Only needed in the event that one is installing from source
 '
 
 sed "s/__VERSION__/latest/" \
-  "${conda_pcluster_env_prefix}/bin/umccr_utils/version.py" > \
-  "${conda_pcluster_env_prefix}/bin/umccr_utils/version.py.tmp"
-mv "${conda_pcluster_env_prefix}/bin/umccr_utils/version.py.tmp" \
-  "${conda_pcluster_env_prefix}/bin/umccr_utils/version.py"
+  "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/version.py" > \
+  "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/version.py.tmp"
 
+mv "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/version.py.tmp" \
+  "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/version.py"
 
+###############
+# END OF SCRIPT
+###############
 echo_stderr "Installation Complete!"
 
