@@ -26,7 +26,7 @@ runs:
         mkdir -p "release-${{ inputs.tag_name }}/bin"
 
         # Update globals.py for release
-        sed -i "s/__VERSION__/${{ inputs.tag_name }}/g" ""release-${{ inputs.tag_name }}/bin/umccr_utils/version.py"
+        sed -i "s/__VERSION__/${{ inputs.tag_name }}/g" "release-${{ inputs.tag_name }}/bin/umccr_utils/version.py"
 
         # Add scripts
         rsync --archive bin/ "release-${{ inputs.tag_name }}/bin/"
