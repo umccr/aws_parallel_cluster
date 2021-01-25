@@ -258,7 +258,7 @@ def main():
 
     args = set_args(args)
 
-    # Check environment vars
+    # Check environment vars and we're logged in to aws
     check_env()
 
     configuration_file = create_configuration_file(args)

@@ -7,7 +7,9 @@ Simple script that:
 3. Adds scripts to bin subdir in <pcluster_conda_prefix>
 '
 
+# Ensure installation fails on non-zero exit code
 set -euo pipefail
+
 
 ###########
 # CHECKS
@@ -130,6 +132,28 @@ PCLUSTER_CONDA_ENV_NAME="pcluster"
 CONDA_ENV_FILE="$(get_this_path)/conf/pcluster-env.yaml"
 REQUIRED_CONDA_VERSION="4.9.0"
 
+##########################################
+# Strip __AWS_PARALLEL_CLUSTER_VERSION__
+##########################################
+
+: '
+Only needed in the event that one is installing from source
+in which case we dont have a clue what version to install, therefore we eradicate it completely
+'
+
+# Create alternative source file
+tmp_conda_env_file="$(mktemp --suffix ".conda.env.yaml")"
+
+# Swap out "aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__"
+# for aws-parallelcluster
+sed "s/aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__/aws-parallelcluster" \
+  "${CONDA_ENV_FILE}" > "${tmp_conda_env_file}"
+# FIXME - scope for getting this value rather than ignoring it
+# TAG_REGEX='^refs\/tags\/(?:pre-)?v(\d+\.\d+\.\d+)-(?:\d+\.\d+\.\d+)$'
+# determine if we're in the right git repo?
+# get the current checkout tag, match it to a versioned tag -> might need to go remote
+# strip the refs/tags etc replace
+
 ############
 # RUN CHECKS
 ############
@@ -166,7 +190,7 @@ if ! has_conda_env; then
           conda env create \
             --quiet \
             --name "${PCLUSTER_CONDA_ENV_NAME}" \
-            --file "${CONDA_ENV_FILE}"
+            --file "${tmp_conda_env_file}"
           break;;
         "No" )
           echo_stderr "Installation cancelled"
@@ -182,7 +206,7 @@ else
           conda env update \
             --quiet \
             --name "${PCLUSTER_CONDA_ENV_NAME}" \
-            --file "${CONDA_ENV_FILE}"
+            --file "${tmp_conda_env_file}"
           break;;
         "No" )
           echo_stderr "Installation cancelled"
@@ -219,9 +243,9 @@ rsync --archive \
   --include='*.py' --exclude='*' \
   "$(get_this_path)/bin/umccr_utils/" "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/"
 
-#################
-# REPLACE VERSION
-#################
+#####################
+# REPLACE __VERSION__
+#####################
 
 : '
 Only needed in the event that one is installing from source
@@ -233,6 +257,7 @@ sed "s/__VERSION__/latest/" \
 
 mv "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/version.py.tmp" \
   "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/version.py"
+
 
 ###############
 # END OF SCRIPT

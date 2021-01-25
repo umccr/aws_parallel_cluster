@@ -54,7 +54,7 @@ You must have [conda][miniconda] and [jq][jq_installation_page] before continuin
 
 ### Installation
 
-Head to the [releases](../../releases) page to download the latest release.  
+Head to the [releases][releases] page to download the latest release.  
 ```shell
 # Make sure conda is at the latest version
 conda update --name base conda
@@ -105,11 +105,9 @@ $ ssm i-XXXXXXXXXXXXX
 > CLUSTER_NAME can only be alpha-numeric and must start with a letter
 
 ```shell
-$ CLUSTER_TEMPLATE="tothill"  # or umccr_dev 
 $ conda activate pcluster
-$ start_cluster.sh \
-  <CLUSTER_NAME> 
-  --cluster-template "${CLUSTER_TEMPLATE}"
+$ start_cluster.py \
+  --cluster-name <CLUSTER_NAME> 
 Beginning cluster creation for cluster: my-test-cluster
 Creating stack named: parallelcluster-my-test-cluster
 Status: parallelcluster-my-test-cluster - CREATE_COMPLETE
@@ -122,7 +120,7 @@ Log in with 'ssm i-XXXXXXXX'   <---- Master instance ID
 $ ssm i-XXXXXXXXXX
 
 # Delete the cluster when finished
-$ stop_cluster.sh <CLUSTER_NAME>
+$ stop_cluster.py --cluster-name <CLUSTER_NAME>
 ```
 
 ## Cluster Use
@@ -148,13 +146,17 @@ Use `sinfo` to see the current list of running compute nodes.
 ### Staging input and reference data
 You will likely need to download your input data and software.  
 Ensure that inputs are accessible to all nodes by placing it in the `${SHARED_DIR}` folder.  
-This is:
-  * `/efs` if using the efs configuration on `tothill` or `umccr_dev`
-  * `/fsx` if using the fsx configuration on `umccr_dev_fsx`
-  
+
+If you specified `--file-system-type` as `efs` (default) then the `SHARED_DIR` environment variable will be set
+to `/efs`. Alternatively if `--file-system-type` is set to `fsx` then the `SHARED_DIR` 
+environment variable will be set to `/fsx`.
+
 By default you will have read-only access to the s3 buckets.  
 Use `sbatch --wrap "aws s3 sync s3://<bucket_path> "${SHARED_DIR}/local_path"` to download data
 into the shared file system.  
+
+Both EFS and FSX systems are purged on the deletion of the stack. Please ensure you have copied your data 
+you wish to save back to S3
 
 > Please run the sync commands on a compute node, see 'Using slurm' below for more info.
 > Compute nodes have a much higher bandwidth than the master nodes, hence why this command
@@ -183,6 +185,9 @@ $ sinteractive --time=10:00 --nodes=1 --cpus-per-task=1
 ```
 
 ### Running through cromwell
+> Few issues on the latest AMI for running CROMWELL
+> Please ignore this section for now
+
 The cromwell server runs under the ec2-user on port 8000.
 You can submit to the server via curl like so:
 
@@ -215,22 +220,6 @@ Both conda and docker are is also installed on our *standard* AMI
 
 > Not currently standard
 
-### File System
-
-> Currently under development and discussion.  
-> Subject to change
-
-The cluster uses EFS to provide a **filesystem that is available to all nodes**. 
-This means that all compute nodes have access to the same FS and don't necessarily have to stage their own data 
-(if it was already put in place). 
-However, that also means the data put into EFS remains available (and chargeable) as long as the cluster remains. 
-So data will have to be cleaned up manually after it fulfilled it's purpose.
-
-One can also specify to use an `fsx lustre` filesystem with the `umccr_fsx` config. This will be faster but more expensive for most use cases.
-
-Both EFS and FSX systems are purged on the deletion of the stack. Please ensure you have copied your data 
-you wish to save back to S3
-
 ### Accessing private GitHub repos.
 We have a public/private key pair for accessing our GitHub repos,
 stored in AWS ssm parameters. If the repo of interest as this public key
@@ -252,17 +241,17 @@ They are described below along with their expected use cases:
 * Use for staging input and reference data and uploading output data.   
 * Uses spot instances, so use `--requeue` on your jobs to enable job restarts
 
-#### long
-* Use `--partition=long` to run commands through this partition
-* Currently running an m5.large, with the intention to move this to a higher network bandwidth but with reduced specs.
-* Is an 'ondemand' instances for jobs that CANNOT be restarted such as workflow schedulers.  
+#### *-long
+* Use `--partition=compute-long` or `--partition=copy-long`.
+* These partitions have the same specs as their 'spot' counter-parts by use 'ondemand' instances instead. 
+* These should be reserved for jobs that CANNOT be restarted such as workflow schedulers.  
 
 
 ### Limitations
 
 The current cluster and scheduler (SLURM) run with minimal configuration, so there will be some limitations. Known points include:
 
-- `--mem` option is not natively suppported:
+- `--mem` option is not natively supported:
     * Whilst it can be used, there is no slurm controller enforcing memory. 
     * Since you are probably the only one using the cluster, 
       please do not exploit this or forever suffer the consequences.
@@ -276,11 +265,12 @@ The following worklows are working examples you can run through to see AWS Paral
 [Gridss Purple Linx CWL](working_examples/toil/gridss-purple-linx-cwl.md)
 
 ### Cromwell
-
+> Please see above, a little bit of work is needed before we start using cromwell again
 [Haplotype Caller WDL](working_examples/cromwell/haplotype-caller.md)
 
 ### bcbio
 > Not this is not currently a working example due to a novel failure
+> Not currently installed in this version of the ami
 
 [bcbio variant calling example](working_examples/bcbio/bcbio-nextgen.md)
 
@@ -291,8 +281,8 @@ A workaround is taking your short-term local SSO credentials and importing them 
 
 To do this you must have the following:
 1. Logged in to AWS on your local computer via sso
-2. Have your parallel cluster environment activated, OR at least have `aws2-wrap` in your PATH
-3. Have the `ssm_run` function sourced from [this GitHub repo](alexiswl_bashrc)  
+2. Have your parallel cluster environment activated, OR at least have `aws2-wrap` or `yawsso` in your PATH
+3. Have the `ssm_run` function sourced from [this GitHub repo][alexiswl_bashrc]  
 
 From your local computer run:
 ```
@@ -347,10 +337,7 @@ When you run the pcluster installation command it installs aws v1 onto your cond
 You'll need to open up a new shell (that is not in your pcluster conda env) to login via sso.  
 Many people arent happy about this. You can rant to them [here][aws_doesnt_support_pip_bug]
 
-### The vpc ID 'vpc-XXXX' does not exist
-This can be caused by trying to access a network configuration outside your permissions.
-Ensure you're setting `--cluster-template` correctly and pointing to the right config-file with `--config`
-
+[releases]: https://github.com/umccr/aws_parallel_cluster/releases
 [install_doc]: https://docs.aws.amazon.com/parallelcluster/latest/ug/install.html
 [blog_1]: https://aws.amazon.com/blogs/machine-learning/building-an-interactive-and-scalable-ml-research-environment-using-aws-parallelcluster/
 [aws_parallel_cluster]: https://aws.amazon.com/hpc/parallelcluster/

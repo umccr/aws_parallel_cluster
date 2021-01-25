@@ -12,6 +12,7 @@ from umccr_utils.miscell import run_subprocess_proc
 from umccr_utils.logger import get_logger
 from umccr_utils.globals import AWS_REGION
 from umccr_utils.help import print_extended_help
+from umccr_utils.checks import check_env
 from io import StringIO
 import boto3
 import sys
@@ -95,16 +96,23 @@ def print_df(cluster_df):
 
 
 def main():
+    # Get args
     args = get_args()
 
     if getattr(args, "help_ext", False):
         print_extended_help()
 
+    # Check the environment
+    check_env()
+
+    # Get the cluster df
     cluster_df = get_cluster_list()
 
+    # Add Master column
     cluster_df["Master"] = cluster_df.apply(lambda x: np.nan if x.Status in ["CREATE_IN_PROGRESS"] else get_master_ec2_instance_id_from_pcluster_id(x.Name),
                                             axis="columns")
 
+    # Add Creator column
     cluster_df["Creator"] = cluster_df.apply(lambda x: get_creator_tag(x.Master) if not pd.isna(x.Master) else np.nan,
                                              axis="columns")
 

@@ -8,7 +8,7 @@ dependencies:
   - python=3.8
   - pip
   - pip:
-    - aws-parallelcluster == 2.9.1
+    - aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__
     - aws2-wrap == 1.1.1
     - yawsso
     - packaging == 20.4

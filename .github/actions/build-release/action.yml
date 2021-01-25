@@ -5,12 +5,71 @@ inputs:
     description: name of the release tag
     required: true
 
-description: "Add necessary files to zip file"
+description: |
+  Set the version of AWS Parallel Cluster version in the conda env yaml file
+  Set the version of the release in version.
+  Add necessary files to zip file.
 
 runs:
   using: "composite"
   steps:
-    - shell: bash
+    - id: get-nonlatest-git-tag
+      shell: bash
+      env:
+        git_tag: ${{ inputs.git_tag }}
+      run: |
+        # Get git commit id
+        commit_id="$(git show-ref --tags "${git_tag}" | {
+                     cut -d' ' -f1
+                    })"
+
+        # Now get git tag from commit id if it isn't 'latest'
+        git_tag="$(git show-ref | {
+                   grep "${commit_id}"
+                  } | {
+                   grep "refs/tags"
+                  } | {
+                   grep -v "refs/tags/latest"
+                  } | {
+                   cut -d' ' -f2
+                  })
+
+        # Set git tag as output for this step
+        echo "::set-output name=git_tag::${git_tag}"
+    - id: get-aws-parallel-cluster-version
+      shell: python
+      env:
+        GIT_TAG: ${{ steps.get-nonlatest-git-tag.outputs.git_tag }}
+      run: |
+        # Imports
+        import sys
+        import os
+
+        # Get env vars
+        git_tag = os.environ["GIT_TAG"]
+
+        if git_tag is None or git_tag == "":
+          sys.exit(1)
+
+        # Strip 'refs/tags/' from left side
+        # "refs/tags/v2.9.1-1.0.2" -> "v2.9.1-1.0.2"
+        # "refs/tags/pre-v2.9.1-1.0.2" -> "pre-v2.9.1-1.0.2"
+        git_tag = git_tag.lstrip("refs/tags/")
+
+        # Strip 'pre-' from left side
+        # "pre-v2.9.1-1.0.2" -> "v2.9.1-1.0.2"
+        git_tag = git_tag.lstrip("pre-")
+
+        # Now we have <aws cluster version>-<build-version>
+        parallel_cluster_version = git_tag.split("-", 1)[0]
+        # "v2.9.1-1.0.2" -> "v2.9.1"
+
+        # Return the aws parallel cluster version value
+        print("::set-output name=aws_parallel_cluster_version::{}".format(parallel_cluster_version))
+    - id: build-release
+      shell: bash
+      env:
+        AWS_PARALLEL_CLUSTER_VERSION: ${{ steps.get-aws-parallel-cluster-version.aws_parallel_cluster_version }}
       run: |
         # Install commands
         sudo apt-get update -y
@@ -28,17 +87,22 @@ runs:
         # Add scripts
         rsync --archive bin/ "release-${{ inputs.tag_name }}/bin/"
 
-        # Update globals.py for release
-        sed -i "s/__VERSION__/${{ inputs.tag_name }}/g" "release-${{ inputs.tag_name }}/bin/umccr_utils/version.py"
+        # Update version.py for release
+        sed -i "s/__VERSION__/${{ inputs.tag_name }}/g" \
+          "release-${{ inputs.tag_name }}/bin/umccr_utils/version.py"
 
         # Add conda-env yaml
         cp conf/pcluster-env.yaml "release-${{ inputs.tag_name }}/conf/pcluster-env.yaml"
 
-        # Make install.sh an executable
-        chmod +x install.sh
+        # Update conda-env.yaml aws parallel cluster version
+        sed -i "s/__AWS_PARALLEL_CLUSTER_VERSION__/${AWS_PARALLEL_CLUSTER_VERSION}/" \
+          release-${{ inputs.tag_name }}/conf/pcluster-env.yaml"
 
         # Add installation script
-        mv install.sh "release-${{ inputs.tag_name }}/install.sh"
+        cp install.sh "release-${{ inputs.tag_name }}/install.sh"
+
+        # Make install.sh an executable
+        chmod +x "release-${{ inputs.tag_name }}/install.sh"
 
         # Create zip file
         zip -r "release-${{ inputs.tag_name }}.zip" "release-${{ inputs.tag_name }}"
