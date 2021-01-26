@@ -87,13 +87,21 @@ runs:
         # Create subdirs too, as present on GitHub
         mkdir -p "release-${{ inputs.git_tag }}/conf"
         mkdir -p "release-${{ inputs.git_tag }}/bin"
+        mkdir -p "release-${{ inputs.git_tag }}/lib"
 
         # Add scripts
-        rsync --archive bin/ "release-${{ inputs.git_tag }}/bin/"
+        rsync --archive \
+          --include='*.py' --exclude='*' \
+          "bin/" "release-${{ inputs.git_tag }}/bin/"
+
+        # Add libraries
+        rsync --archive \
+          --include="*.py" --exclude='*' \
+          "bin/umccr_utils/" "release-${{ inputs.git_tag }}/lib/umccr_utils/"
 
         # Update version.py for release
         sed -i "s/__VERSION__/${{ inputs.git_tag }}/g" \
-          "release-${{ inputs.git_tag }}/bin/umccr_utils/version.py"
+          "release-${{ inputs.git_tag }}/lib/umccr_utils/version.py"
 
         # Add conda-env yaml
         cp conf/pcluster-env.yaml "release-${{ inputs.git_tag }}/conf/pcluster-env.yaml"

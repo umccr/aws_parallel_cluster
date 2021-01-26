@@ -241,7 +241,7 @@ rsync --archive \
 # Copy over umccr_utils to library path
 rsync --archive \
   --include='*.py' --exclude='*' \
-  "$(get_this_path)/bin/umccr_utils/" "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/"
+  "$(get_this_path)/lib/umccr_utils/" "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/"
 
 #####################
 # REPLACE __VERSION__
