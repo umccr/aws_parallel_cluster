@@ -82,31 +82,31 @@ runs:
           zip
 
         # Create release dir
-        mkdir -p "release-${{ inputs.tag_name }}"
+        mkdir -p "release-${{ inputs.git_tag }}"
 
         # Create subdirs too, as present on GitHub
-        mkdir -p "release-${{ inputs.tag_name }}/conf"
-        mkdir -p "release-${{ inputs.tag_name }}/bin"
+        mkdir -p "release-${{ inputs.git_tag }}/conf"
+        mkdir -p "release-${{ inputs.git_tag }}/bin"
 
         # Add scripts
-        rsync --archive bin/ "release-${{ inputs.tag_name }}/bin/"
+        rsync --archive bin/ "release-${{ inputs.git_tag }}/bin/"
 
         # Update version.py for release
-        sed -i "s/__VERSION__/${{ inputs.tag_name }}/g" \
-          "release-${{ inputs.tag_name }}/bin/umccr_utils/version.py"
+        sed -i "s/__VERSION__/${{ inputs.git_tag }}/g" \
+          "release-${{ inputs.git_tag }}/bin/umccr_utils/version.py"
 
         # Add conda-env yaml
-        cp conf/pcluster-env.yaml "release-${{ inputs.tag_name }}/conf/pcluster-env.yaml"
+        cp conf/pcluster-env.yaml "release-${{ inputs.git_tag }}/conf/pcluster-env.yaml"
 
         # Update conda-env.yaml aws parallel cluster version
         sed -i "s/__AWS_PARALLEL_CLUSTER_VERSION__/${AWS_PARALLEL_CLUSTER_VERSION}/" \
-          "release-${{ inputs.tag_name }}/conf/pcluster-env.yaml"
+          "release-${{ inputs.git_tag }}/conf/pcluster-env.yaml"
 
         # Add installation script
-        cp install.sh "release-${{ inputs.tag_name }}/install.sh"
+        cp install.sh "release-${{ inputs.git_tag }}/install.sh"
 
         # Make install.sh an executable
-        chmod +x "release-${{ inputs.tag_name }}/install.sh"
+        chmod +x "release-${{ inputs.git_tag }}/install.sh"
 
         # Create zip file
-        zip -r "release-${{ inputs.tag_name }}.zip" "release-${{ inputs.tag_name }}"
+        zip -r "release-${{ inputs.git_tag }}.zip" "release-${{ inputs.git_tag }}"
