@@ -18,6 +18,8 @@ runs:
       env:
         git_tag: ${{ inputs.git_tag }}
       run: |
+        # Use -x to show logging
+        set -euxo pipefail
         # Get git commit id
         commit_id="$(git show-ref --tags "${git_tag}" | {
                      cut -d' ' -f1
@@ -71,6 +73,8 @@ runs:
       env:
         AWS_PARALLEL_CLUSTER_VERSION: ${{ steps.get-aws-parallel-cluster-version.aws_parallel_cluster_version }}
       run: |
+        # Show running of script
+        set -euxo pipefail
         # Install commands
         sudo apt-get update -y
         sudo apt-get install -y \
