@@ -1,7 +1,7 @@
 name: build-release
 
 inputs:
-  tag_name:
+  git_tag:
     description: name of the release tag
     required: true
 
