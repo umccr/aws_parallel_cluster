@@ -55,7 +55,7 @@ runs:
         # <priority> is an integer; options with higher numbers have higher priority in
         #   automatic mode.
         sudo update-alternatives --quiet --install \
-          /usr/bin/python python /usr/bin/python3.6 10
+          /usr/bin/python python /usr/bin/python3 10
     - id: install-semantic-version-from-pip
       shell: bash
       run: |
@@ -66,7 +66,7 @@ runs:
         sudo apt-get install -y -qq \
           python3-pip
         # Install semantic_version through pip
-        pip3 install semantic_version
+        pip3 install --quiet semantic_version
     - id: get-aws-parallel-cluster-version
       shell: python
       env:
