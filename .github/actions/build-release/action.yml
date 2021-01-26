@@ -32,7 +32,7 @@ runs:
                    grep -v "refs/tags/latest"
                   } | {
                    cut -d' ' -f2
-                  })
+                  })"
 
         # Set git tag as output for this step
         echo "::set-output name=git_tag::${git_tag}"
@@ -96,7 +96,7 @@ runs:
 
         # Update conda-env.yaml aws parallel cluster version
         sed -i "s/__AWS_PARALLEL_CLUSTER_VERSION__/${AWS_PARALLEL_CLUSTER_VERSION}/" \
-          release-${{ inputs.tag_name }}/conf/pcluster-env.yaml"
+          "release-${{ inputs.tag_name }}/conf/pcluster-env.yaml"
 
         # Add installation script
         cp install.sh "release-${{ inputs.tag_name }}/install.sh"
