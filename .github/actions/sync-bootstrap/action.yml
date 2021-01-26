@@ -18,8 +18,8 @@ runs:
     - shell: bash
       run: |
         # Install requirements
-        sudo apt-get update
-        sudo apt-get install -y \
+        sudo apt-get update -y -qq
+        sudo apt-get install -y -qq \
           awscli \
           jq \
 
