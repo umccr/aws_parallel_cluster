@@ -54,6 +54,8 @@ runs:
         #   (e.g. /usr/bin/less)
         # <priority> is an integer; options with higher numbers have higher priority in
         #   automatic mode.
+        echo "Debugging: find -L /usr/bin/ -mindepth 1 -maxdepth 1 -name 'python*'"
+        find -L /usr/bin/ -mindepth 1 -maxdepth 1 -name 'python*'
         sudo update-alternatives --quiet --install \
           /usr/bin/python python /usr/bin/python3.8 10
     - id: install-semantic-version-from-pip
