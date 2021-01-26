@@ -71,7 +71,7 @@ runs:
     - id: build-release
       shell: bash
       env:
-        AWS_PARALLEL_CLUSTER_VERSION: ${{ steps.get-aws-parallel-cluster-version.aws_parallel_cluster_version }}
+        AWS_PARALLEL_CLUSTER_VERSION: ${{ steps.get-aws-parallel-cluster-version.outputs.aws_parallel_cluster_version }}
       run: |
         # Show running of script
         set -euxo pipefail
