@@ -79,4 +79,3 @@ def print_extended_help():
     """
 
     print(get_parallel_cluster_extended_help())
-

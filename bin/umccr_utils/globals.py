@@ -4,8 +4,6 @@
 Global params - mostly used to generate the configuration file
 """
 
-from umccr_utils.version import version
-
 AWS_REGION = "ap-southeast-2"
 
 AWS_SSM_PARAMETER_KEYS = {
@@ -114,4 +112,4 @@ AWS_ACCOUNT_MAPPING = {
 
 
 # https://regex101.com/r/SXNKMR/1
-UMCCR_VERSION_REGEX = "^(?:pre|dev)?-?v(\d+\.\d+\.\d+)-(\d+\.\d+\.\d+)$"
+UMCCR_VERSION_REGEX = r"^(?:pre|dev)?-?v(\d+\.\d+\.\d+)-(\d+\.\d+\.\d+)$"

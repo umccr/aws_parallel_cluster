@@ -59,7 +59,7 @@ def check_credentials():
     except UnauthorizedSSOTokenError:
         raise AWSCredentialsError
 
-    if not ['UserId'] in caller_id.keys():
+    if "UserId" not in caller_id.keys():
         logger.error("Could not find user id after calling 'get_caller_identity' function."
                      "Got the following keys instead: \"{}\"".format(", ".join(caller_id.keys())))
         raise AWSCredentialsError
@@ -75,7 +75,8 @@ def get_aws_version():
     aws_type_command = ["type", "-p", "aws"]  # Should return /usr/local/bin/aws
 
     # Run through subprocess wrapper
-    aws_type_return, aws_type_stdout, aws_type_stderr = run_subprocess_proc(["bash", "-c", shlex.join(aws_type_command)],
+    aws_type_return, aws_type_stdout, aws_type_stderr = run_subprocess_proc(["bash", "-c",
+                                                                             shlex.join(aws_type_command)],
                                                                             capture_output=True)
 
     if not aws_type_return == 0:
@@ -98,8 +99,8 @@ def get_aws_version():
         logger.error("Could not find aws-cli version in \"{}\"".format(aws_version_stdout))
         raise AWSVersionFailureError
 
-    aws_cli_version = [version
-                       for command, version in command_version_split
+    aws_cli_version = [aws_version
+                       for command, aws_version in command_version_split
                        if command == "aws-cli"][0]
 
     return aws_cli_version
@@ -204,11 +205,11 @@ def get_parallel_cluster_s3_path(s3_path_ssm_parameter_key):
     return s3_path_ssm_parameter_value
 
 
-def get_ami_id(version):
+def get_ami_id(pcluster_version):
     """
     Get the ami id for this version of aws parallel cluster
     Uses a tag based approach to find the correct ami for this parallel cluster version
-    :param version:
+    :param pcluster_version:
     :return:
     """
 
@@ -225,7 +226,7 @@ def get_ami_id(version):
                 {
                     "Name": "tag:Version",
                     "Values": [
-                        version
+                        pcluster_version
                     ]
                 }
             ],
@@ -235,9 +236,10 @@ def get_ami_id(version):
     # Check if there's only one image (which there should be)
     if len(images_dict["Images"]) == 0:
         logger.error("Could not retrieve the image id")
-        logger.error("No image with the the stack tag '{}' and version tags '{}' could be found for this aws user".format(
-            get_parallel_cluster_ami_stack_name(), version
-        ))
+        logger.error("No image with the the stack tag '{}' "
+                     "and version tags '{}' could be found for this aws user".format(
+                        get_parallel_cluster_ami_stack_name(), version
+                     ))
         raise AMINotFoundError
     elif len(images_dict["Images"]) == 1:
         return images_dict["Images"][0]["ImageId"]
@@ -305,4 +307,3 @@ def ssm_parameter_value(ssm_parameter_name, encrypted=False):
         raise SSMParameterError
 
     return parameter["Parameter"]["Value"]
-

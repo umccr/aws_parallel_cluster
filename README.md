@@ -58,14 +58,13 @@ Head to the [releases][releases] page to download the latest release.
 ```shell
 # Make sure conda is at the latest version
 conda update --name base conda
-# Download the latest release from the GitHub releases page
-wget https://github.com/umccr/aws_parallel_cluster/releases/download/latest/release-latest.zip
-# Unzip
-unzip release-latest.zip
-# Run the installer
-./release-latest/install.sh
-# Delete the zip and extracted files
-rm -rf release-latest.zip release-latest/
+# Run the installer - this creates a tmp folder 
+( 
+  cd "$(mktemp -d)" && \
+  wget "https://github.com/umccr/aws_parallel_cluster/releases/download/latest/release-latest.zip" && \
+  unzip "release-latest" && \
+  bash "release-latest/install.sh" 
+)
 ```
 
 #### From source
