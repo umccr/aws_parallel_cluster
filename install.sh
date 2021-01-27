@@ -146,7 +146,7 @@ tmp_conda_env_file="$(mktemp --suffix ".conda.env.yaml")"
 
 # Swap out "aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__"
 # for aws-parallelcluster
-sed "s/aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__/aws-parallelcluster" \
+sed "s/aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__/aws-parallelcluster/" \
   "${CONDA_ENV_FILE}" > "${tmp_conda_env_file}"
 # FIXME - scope for getting this value rather than ignoring it
 # TAG_REGEX='^refs\/tags\/(?:pre-)?v(\d+\.\d+\.\d+)-(?:\d+\.\d+\.\d+)$'
