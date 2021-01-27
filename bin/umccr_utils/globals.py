@@ -111,3 +111,7 @@ AWS_ACCOUNT_MAPPING = {
     "843407916570": "umccr_dev",
     "206808631540": "tothill"
 }
+
+
+# https://regex101.com/r/SXNKMR/1
+UMCCR_VERSION_REGEX = "^(?:pre|dev)?-?v(\d+\.\d+\.\d+)-(\d+\.\d+\.\d+)$"

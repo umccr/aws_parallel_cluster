@@ -5,13 +5,13 @@ Random functions that don't quite go anywhere
 """
 
 import subprocess
+import boto3
 import os
-from pathlib import Path
 import getpass
 from umccr_utils.logger import get_logger
-from umccr_utils.errors import NoCondaEnvError
+from umccr_utils.errors import NoCondaEnvError, AWSCredentialsError
+from botocore.exceptions import NoCredentialsError
 import json
-from packaging import version
 
 logger = get_logger()
 

@@ -12,7 +12,7 @@ from umccr_utils.aws_wrappers import get_master_ec2_instance_id_from_pcluster_id
     get_parallel_cluster_s3_path, get_ami_id
 import tempfile
 from umccr_utils.checks import check_env
-from umccr_utils.miscell import json_to_str, run_subprocess_proc
+from umccr_utils.miscell import json_to_str, run_subprocess_proc, get_pcluster_version
 from umccr_utils.help import print_extended_help
 from umccr_utils.errors import PClusterCreateError
 import configparser
@@ -162,7 +162,7 @@ def create_configuration_file(args):
         version
     )
     # Add ami
-    cluster_basics["custom_ami"] = get_ami_id(version)
+    cluster_basics["custom_ami"] = get_ami_id(get_pcluster_version())
     pcluster_config["cluster {}".format(args.cluster_name)] = cluster_basics
 
     # Add in network settings:

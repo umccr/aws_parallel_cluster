@@ -73,3 +73,10 @@ class AMINotFoundError(Exception):
     Could not find the ami based on the tags created
     """
     pass
+
+
+class SSMParameterError(Exception):
+    """
+    Couldn't evaluate the value of the ssm parameter correctly
+    """
+    pass

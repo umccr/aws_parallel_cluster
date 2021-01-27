@@ -10,7 +10,7 @@ from umccr_utils.miscell import run_subprocess_proc, get_user
 from umccr_utils.logger import get_logger
 from packaging import version
 from umccr_utils.errors import NoLocalIPError, AWSCredentialsError, AWSBinaryNotFoundError, AWSVersionFailureError, \
-    PClusterBinaryNotFoundError, PClusterVersionFailure, PClusterInstanceError, AMINotFoundError
+    PClusterBinaryNotFoundError, PClusterVersionFailure, PClusterInstanceError, AMINotFoundError, SSMParameterError
 from umccr_utils.globals import AWS_REGION, AWS_ACCOUNT_MAPPING, AWS_PARALLEL_CLUSTER_STACK_NAME
 from datetime import datetime
 import shlex
@@ -60,7 +60,7 @@ def check_credentials():
         raise AWSCredentialsError
 
     if not ['UserId'] in caller_id.keys():
-        logger.error("Could not find user id after calling 'get_caller_identity_function'."
+        logger.error("Could not find user id after calling 'get_caller_identity' function."
                      "Got the following keys instead: \"{}\"".format(", ".join(caller_id.keys())))
         raise AWSCredentialsError
 
@@ -296,8 +296,13 @@ def ssm_parameter_value(ssm_parameter_name, encrypted=False):
                                   WithDecryption=encrypted)
 
     if "Parameter" not in parameter.keys():
-        logger.error("")
-    # FIXME - check first
-    return parameter["Parameter"]["Value"]
+        logger.error("SSM parameter \"{}\" doesn't exist".format(ssm_parameter_name))
+        raise SSMParameterError
 
+    if "Value" not in parameter["Parameter"].keys():
+        logger.error("SSM parameter \"{}\" doesn't have 'Value' attribute. "
+                     "Check encryption value has been parsed correctly".format(ssm_parameter_name))
+        raise SSMParameterError
+
+    return parameter["Parameter"]["Value"]
 

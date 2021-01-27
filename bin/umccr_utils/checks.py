@@ -6,7 +6,7 @@ Check functions
 
 from umccr_utils.logger import get_logger
 from umccr_utils.errors import NoCondaEnvError, PClusterVersionFailure, AWSVersionFailureError, AWSCredentialsError
-from umccr_utils.aws_wrappers import get_aws_version, get_user as get_aws_user
+from umccr_utils.aws_wrappers import get_aws_version, check_credentials
 from umccr_utils.miscell import get_conda_env, get_pcluster_version
 from packaging import version
 
@@ -33,5 +33,7 @@ def check_env():
     if not version.parse(get_aws_version()) >= version.parse("2.0.0"):
         raise AWSVersionFailureError
 
-    if get_aws_user() is None:
+    try:
+        check_credentials()
+    except AWSCredentialsError:
         raise AWSCredentialsError

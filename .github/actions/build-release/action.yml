@@ -114,9 +114,10 @@ runs:
       run: |
         # Show running of script
         set -euxo pipefail
+
         # Install commands
-        sudo apt-get update -y
-        sudo apt-get install -y \
+        sudo apt-get update -y -qq
+        sudo apt-get install -y -qq \
           rsync \
           zip
 
