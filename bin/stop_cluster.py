@@ -57,10 +57,11 @@ def stop_cluster(cluster_name):
 
 def main():
 
-    args = get_args()
-
-    if getattr(args, "help_ext", False):
+    if "--help-ext" in sys.argv:
         print_extended_help()
+        sys.exit(0)
+
+    args = get_args()
 
     # Check we're logged in
     check_env()

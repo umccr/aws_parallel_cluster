@@ -251,11 +251,11 @@ def main():
     Log success message
     """
 
-    args = get_args()
-
-    if getattr(args, "help_ext", False):
+    if "--help-ext" in sys.argv:
         print_extended_help()
         sys.exit(0)
+
+    args = get_args()
 
     args = set_args(args)
 

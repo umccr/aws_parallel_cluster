@@ -96,11 +96,14 @@ def print_df(cluster_df):
 
 
 def main():
-    # Get args
-    args = get_args()
 
-    if getattr(args, "help_ext", False):
+    # Print extended help
+    if "--help-ext" in sys.argv:
         print_extended_help()
+        sys.exit(0)
+
+    # Get args
+    _ = get_args()
 
     # Check the environment
     check_env()
