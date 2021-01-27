@@ -157,4 +157,4 @@ runs:
         chmod +x "release-${{ inputs.git_tag }}/install.sh"
 
         # Create zip file
-        zip -r "release-${{ inputs.git_tag }}.zip" "release-${{ inputs.git_tag }}"
+        zip -q -r "release-${{ inputs.git_tag }}.zip" "release-${{ inputs.git_tag }}"

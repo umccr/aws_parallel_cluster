@@ -9,10 +9,11 @@ import json
 from json.decoder import JSONDecodeError
 from umccr_utils.logger import get_logger
 from umccr_utils.aws_wrappers import get_master_ec2_instance_id_from_pcluster_id, get_aws_account_name, \
-    get_parallel_cluster_s3_path, get_ami_id
+    get_parallel_cluster_s3_path, get_ami_id, get_ami_version_str
+from umccr_utils.version import version as umccr_version
 import tempfile
 from umccr_utils.checks import check_env
-from umccr_utils.miscell import json_to_str, run_subprocess_proc, get_pcluster_version
+from umccr_utils.miscell import json_to_str, run_subprocess_proc
 from umccr_utils.help import print_extended_help
 from umccr_utils.errors import PClusterCreateError
 import configparser
@@ -20,7 +21,6 @@ from umccr_utils.globals import \
     AWS_GLOBAL_SETTINGS, AWS_REGION, AWS_CLUSTER_BASICS, AWS_SSM_PARAMETER_KEYS, AWS_NETWORK, \
     AWS_PARTITION_QUEUES, AWS_FILESYSTEM, AWS_COMPUTE_RESOURCES, AWS_ALIASES
 import sys
-from umccr_utils.version import version
 
 logger = get_logger()
 
@@ -155,14 +155,15 @@ def create_configuration_file(args):
     # Add pre-install and post-install attributes
     cluster_basics["pre_install"] = "{}/{}/bootstrap/pre_install.sh".format(
         get_parallel_cluster_s3_path(AWS_SSM_PARAMETER_KEYS["s3_config_root"]),
-        version
+        umccr_version
     )
     cluster_basics["post_install"] = "{}/{}/bootstrap/post_install.sh".format(
         get_parallel_cluster_s3_path(AWS_SSM_PARAMETER_KEYS["s3_config_root"]),
-        version
+        umccr_version
     )
+
     # Add ami
-    cluster_basics["custom_ami"] = get_ami_id(get_pcluster_version())
+    cluster_basics["custom_ami"] = get_ami_id(get_ami_version_str())
     pcluster_config["cluster {}".format(args.cluster_name)] = cluster_basics
 
     # Add in network settings:

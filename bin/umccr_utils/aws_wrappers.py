@@ -7,13 +7,16 @@ AWS commands to run and validate outputs from
 import boto3
 from botocore.exceptions import UnauthorizedSSOTokenError
 from umccr_utils.miscell import run_subprocess_proc, get_user
+from umccr_utils.version import version as umccr_version
 from umccr_utils.logger import get_logger
 from packaging import version
 from umccr_utils.errors import NoLocalIPError, AWSCredentialsError, AWSBinaryNotFoundError, AWSVersionFailureError, \
     PClusterBinaryNotFoundError, PClusterVersionFailure, PClusterInstanceError, AMINotFoundError, SSMParameterError
-from umccr_utils.globals import AWS_REGION, AWS_ACCOUNT_MAPPING, AWS_PARALLEL_CLUSTER_STACK_NAME
+from umccr_utils.globals import AWS_REGION, AWS_ACCOUNT_MAPPING, \
+    AWS_PARALLEL_CLUSTER_STACK_NAME, UMCCR_VERSION_REGEX_OBJ
 from datetime import datetime
 import shlex
+import sys
 
 logger = get_logger()
 
@@ -238,7 +241,7 @@ def get_ami_id(pcluster_version):
         logger.error("Could not retrieve the image id")
         logger.error("No image with the the stack tag '{}' "
                      "and version tags '{}' could be found for this aws user".format(
-                        get_parallel_cluster_ami_stack_name(), version
+                        get_parallel_cluster_ami_stack_name(), pcluster_version
                      ))
         raise AMINotFoundError
     elif len(images_dict["Images"]) == 1:
@@ -307,3 +310,16 @@ def ssm_parameter_value(ssm_parameter_name, encrypted=False):
         raise SSMParameterError
 
     return parameter["Parameter"]["Value"]
+
+
+def get_ami_version_str():
+    # Get ami-version str
+    # FIXME - this is going to be an issue if the latest tag is installed from source
+    # FIXME - Maybe just run a list on the stacks and pull out the the latest timestamp in this use case
+    regex_match_obj = UMCCR_VERSION_REGEX_OBJ.match(umccr_version)
+    if regex_match_obj is None:
+        # FIXME - should raise a proper error instead
+        sys.exit(1)
+    ami_version = "{}-{}".format(regex_match_obj.group(1), regex_match_obj.group(2))
+
+    return ami_version
