@@ -128,7 +128,7 @@ RELEASE_VERSION="__VERSION__"  # Currently unused
 #########
 
 # Exit on failed command
-set -e
+set -euxo pipefail
 
 # Source config, tells us if we're on a compute or master node
 . "/etc/parallelcluster/cfnconfig"

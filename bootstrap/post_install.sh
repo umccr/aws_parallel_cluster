@@ -284,9 +284,6 @@ connect_sacct_to_mysql_db() {
   sed -i "/^StoragePass=/s/.*/StoragePass=$(get_rds_passwd)/" "${SLURM_DBD_CONF_FILE_PATH}"
   sed -i "/^StorageHost=/s/.*/StorageHost=$(get_rds_endpoint)/" "${SLURM_DBD_CONF_FILE_PATH}"
 
-  # Delete password and endpoint files under /root
-  rm -f "${SLURM_DBD_ENDPOINT_FILE_PATH}" "${SLURM_DBD_PWD_FILE_PATH}"
-
   # Update slurm.conf
   echo_stderr "Updating slurm.conf"
   # We need to update the following attributes
@@ -758,7 +755,7 @@ START
 '
 
 # Exit on failed command
-set -e
+set -euxo pipefail
 
 # Source config, tells us if we're on a compute or master node
 . "/etc/parallelcluster/cfnconfig"
