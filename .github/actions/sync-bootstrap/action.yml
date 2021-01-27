@@ -22,6 +22,7 @@ runs:
         sudo apt-get install -y -qq \
           awscli \
           jq \
+          rsync
 
         # Get config root with ssm-parameter key
         s3_config_root="$(aws ssm get-parameter --name "${{ inputs.ssm_s3_pc_config_root }}" | {
@@ -33,11 +34,15 @@ runs:
 
         # Initialise folder ready for upload
         s3_sync_files_dir="release_dir"
-        mkdir -p "${s3_sync_files_dir}/bootstrap/"
+        mkdir -p "${s3_sync_files_dir}"
 
         # Add instance configuration files
+        mkdir -p "${s3_sync_files_dir}/bootstrap/"
         sed "s/__VERSION__/${{ inputs.tag_name }}/g" bootstrap/pre_install.sh > "${s3_sync_files_dir}/bootstrap/pre_install.sh"
         sed "s/__VERSION__/${{ inputs.tag_name }}/g" bootstrap/post_install.sh > "${s3_sync_files_dir}/bootstrap/post_install.sh"
+
+        # Add slurm files - sinteractive.sh and the template slurmdbd.conf file
+        rsync --archive "slurm/" "${s3_sync_files_dir}/slurm/"
 
         # Now run sync command
         aws s3 sync "${s3_sync_files_dir}/" "${s3_config_version}/"
