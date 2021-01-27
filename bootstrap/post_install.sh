@@ -241,13 +241,16 @@ enable_mem_on_slurm() {
   sed -i "${include_cluster_line_num}i${SLURM_CONF_DEFAULT_MEM_PER_NODE_LINE}" "${SLURM_CONF_FILE}"
 
   # FIXME Hardcoded key-pair-vals should be put in a dict / json
+  # compute partition
   sed -i '/^NodeName=compute-dy-c54xlarge/ s/$/ RealMemory=30000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
   sed -i '/^NodeName=compute-dy-m54xlarge/ s/$/ RealMemory=62000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
+  # compute-long partition
   sed -i '/^NodeName=compute-long-dy-c54xlarge/ s/$/ RealMemory=30000/' "${SLURM_COMPUTE_LONG_PARTITION_CONFIG_FILE}"
   sed -i '/^NodeName=compute-long-dy-m54xlarge/ s/$/ RealMemory=62000/' "${SLURM_COMPUTE_LONG_PARTITION_CONFIG_FILE}"
-  sed -i '/^NodeName=compute-dy-m54xlarge/ s/$/ RealMemory=62000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
+  # copy partition
   sed -i '/^NodeName=copy-dy-m5large/ s/$/ RealMemory=6000/' "${SLURM_COPY_PARTITION_CONFIG_FILE}"
-  sed -i '/^NodeName=long-dy-m5large/ s/$/ RealMemory=6000/' "${SLURM_LONG_PARTITION_CONFIG_FILE}"
+  # copy-long partition
+  sed -i '/^NodeName=copy-long-dy-m5large/ s/$/ RealMemory=6000/' "${SLURM_COPY_LONG_PARTITION_CONFIG_FILE}"
 
   # Replace SelectTypeParameters default (CR_CPU) with (CR_CPU_MEMORY)
   sed -i "/^SelectTypeParameters=/s/.*/SelectTypeParameters=${SLURM_SELECT_TYPE_PARAMETERS}/" "${SLURM_CONF_FILE}"
@@ -698,7 +701,7 @@ SLURM_CONF_FILE="/opt/slurm/etc/slurm.conf"
 SLURM_COMPUTE_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_compute_partition.conf"
 SLURM_COMPUTE_LONG_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_compute-long_partition.conf"
 SLURM_COPY_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_copy_partition.conf"
-SLURM_LONG_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_long_partition.conf"
+SLURM_COPY_LONG_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_copy-long_partition.conf"
 SLURM_SINTERACTIVE_S3="$(get_pc_s3_root)/slurm/scripts/sinteractive.sh"
 SLURM_SINTERACTIVE_FILE_PATH="/opt/slurm/scripts/sinteractive"
 # If just CR_CPU, then slurm will only look at CPU
