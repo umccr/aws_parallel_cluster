@@ -62,7 +62,7 @@ def get_cluster_list():
 
     cluster_columns = ["Name", "Status", "Version"]
 
-    if cluster_list_stdout is not None:
+    if cluster_list_stdout is not None and not cluster_list_stdout.strip() == "":
         clusters_as_df = pd.DataFrame([row.split()
                                        for row in cluster_list_stdout.strip().split("\n")],
                                       columns=cluster_columns)

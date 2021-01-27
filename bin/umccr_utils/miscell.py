@@ -98,14 +98,18 @@ def run_subprocess_proc(*args, **kwargs):
             command_str
         ))
         # Print stdout/stderr to console
-        logger.warning("Stdout was: \n\"{}\"".format(command_stdout.strip()))
-        logger.warning("Stderr was: \n\"{}\"".format(command_stderr.strip()))
+        if command_stdout is not None:
+            logger.warning("Stdout was: \n\"{}\"".format(command_stdout.strip()))
+        if command_stderr is not None:
+            logger.warning("Stderr was: \n\"{}\"".format(command_stderr.strip()))
     else:
         # Let debug know command returned successfully
         logger.debug("Command \"{}\" returned successfully".format(command_str))
         # Print stdout/stderr to console
-        logger.debug("Stdout was: \n\"{}\"".format(command_stdout.strip()))
-        logger.debug("Stderr was: \n\"{}\"".format(command_stderr.strip()))
+        if command_stdout is not None:
+            logger.debug("Stdout was: \n\"{}\"".format(command_stdout.strip()))
+        if command_stderr is not None:
+            logger.debug("Stderr was: \n\"{}\"".format(command_stderr.strip()))
 
     return command_returncode, command_stdout, command_stderr
 
