@@ -20,6 +20,9 @@ import sys
 
 logger = get_logger()
 
+# TODO - collect them all and add to globals
+no_master_instance_statuses = ["CREATE_IN_PROGRESS", "CREATE_FAILED"]
+
 
 def get_args():
     """
@@ -109,11 +112,15 @@ def main():
     cluster_df = get_cluster_list()
 
     # Add Master column
-    cluster_df["Master"] = cluster_df.apply(lambda x: np.nan if x.Status in ["CREATE_IN_PROGRESS"] else get_master_ec2_instance_id_from_pcluster_id(x.Name),
+    cluster_df["Master"] = cluster_df.apply(lambda x: np.nan
+                                                      if x.Status in no_master_instance_statuses
+                                                      else get_master_ec2_instance_id_from_pcluster_id(x.Name),
                                             axis="columns")
 
     # Add Creator column
-    cluster_df["Creator"] = cluster_df.apply(lambda x: get_creator_tag(x.Master) if not pd.isna(x.Master) else np.nan,
+    cluster_df["Creator"] = cluster_df.apply(lambda x: get_creator_tag(x.Master)
+                                                       if not pd.isna(x.Master)
+                                                       else np.nan,
                                              axis="columns")
 
     print_df(cluster_df)

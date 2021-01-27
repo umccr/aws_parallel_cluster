@@ -10,6 +10,12 @@ Simple script that:
 # Ensure installation fails on non-zero exit code
 set -euo pipefail
 
+###########
+# GLOBALS
+###########
+
+PCLUSTER_CONDA_ENV_NAME="pcluster"
+REQUIRED_CONDA_VERSION="4.9.0"
 
 ###########
 # CHECKS
@@ -30,6 +36,24 @@ has_jq() {
   if ! jq --version >/dev/null; then
     echo_stderr "Could not find command 'jq'. Please ensure jq is installed before continuing"
     return 1
+  fi
+}
+
+check_readlink_program() {
+  if [[ "${OSTYPE}" == "darwin"* ]]; then
+    readlink_program="greadlink"
+  else
+    readlink_program="readlink"
+  fi
+
+  if ! type "${readlink_program}"; then
+      if [[ "${readlink_program}" == "greadlink" ]]; then
+        echo_stderr "On a mac but 'greadlink' not found"
+        echo_stderr "Please run 'brew install coreutils' and then re-run this script"
+        return 1
+      else
+        echo_stderr "readlink not installed. Please install before continuing"
+      fi
   fi
 }
 
@@ -124,36 +148,6 @@ check_conda_version() {
   fi
 }
 
-###########
-# GLOBALS
-###########
-
-PCLUSTER_CONDA_ENV_NAME="pcluster"
-CONDA_ENV_FILE="$(get_this_path)/conf/pcluster-env.yaml"
-REQUIRED_CONDA_VERSION="4.9.0"
-
-##########################################
-# Strip __AWS_PARALLEL_CLUSTER_VERSION__
-##########################################
-
-: '
-Only needed in the event that one is installing from source
-in which case we dont have a clue what version to install, therefore we eradicate it completely
-'
-
-# Create alternative source file
-tmp_conda_env_file="$(mktemp --suffix ".conda.env.yaml")"
-
-# Swap out "aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__"
-# for aws-parallelcluster
-sed "s/aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__/aws-parallelcluster/" \
-  "${CONDA_ENV_FILE}" > "${tmp_conda_env_file}"
-# FIXME - scope for getting this value rather than ignoring it
-# TAG_REGEX='^refs\/tags\/(?:pre-)?v(\d+\.\d+\.\d+)-(?:\d+\.\d+\.\d+)$'
-# determine if we're in the right git repo?
-# get the current checkout tag, match it to a versioned tag -> might need to go remote
-# strip the refs/tags etc replace
-
 ############
 # RUN CHECKS
 ############
@@ -177,6 +171,40 @@ if ! check_conda_version; then
   echo_stderr "Your conda version is out of date, please run \"conda update -n base -c defaults conda\" before continuing"
   exit 1
 fi
+
+if ! check_readlink_program; then
+  echo_stderr "Failed at readlink check stage"
+  exit 1
+fi
+
+##########################################
+# Strip __AWS_PARALLEL_CLUSTER_VERSION__
+##########################################
+
+: '
+Only needed in the event that one is installing from source
+in which case we dont have a clue what version to install, therefore we eradicate it completely
+'
+
+# Create alternative source file
+conda_env_file="$(get_this_path)/conf/pcluster-env.yaml"
+
+if [[ "${OSTYPE}" == "darwin"* ]]; then
+  tmp_conda_env_file="$(mktemp -t "conda.env.").yaml"
+else
+  tmp_conda_env_file="$(mktemp --suffix ".conda.env.yaml")"
+fi
+
+# Swap out "aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__"
+# for aws-parallelcluster
+sed "s/aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__/aws-parallelcluster/" \
+  "${conda_env_file}" > "${tmp_conda_env_file}"
+# FIXME - scope for getting this value rather than ignoring it
+# TAG_REGEX='^refs\/tags\/(?:pre-)?v(\d+\.\d+\.\d+)-(?:\d+\.\d+\.\d+)$'
+# determine if we're in the right git repo?
+# get the current checkout tag, match it to a versioned tag -> might need to go remote
+# strip the refs/tags etc replace
+
 
 #########################
 # CREATE/UPDATE CONDA ENV
