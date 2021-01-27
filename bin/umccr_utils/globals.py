@@ -112,6 +112,21 @@ AWS_ACCOUNT_MAPPING = {
     "206808631540": "tothill"
 }
 
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-describing-stacks.html
+CFN_STATUSES = {
+    "completed": [
+        "CREATE_COMPLETE",
+    ],
+    "failed": [
+        "CREATE_FAILED",
+        "ROLLBACK_COMPLETE",  # Fails because why did we need to roll back to begin with?
+        "DELETE_FAILED"
+    ],
+    "unexpected": [
+        "UPDATE_COMPLETE",
+        "UPDATE_ROLLBACK_COMPLETE"
+    ]
+}
 
 # https://regex101.com/r/SXNKMR/1
 UMCCR_VERSION_REGEX_STR = r"^(?:pre|dev)?-?v(\d+\.\d+\.\d+)-(\d+\.\d+\.\d+)$"

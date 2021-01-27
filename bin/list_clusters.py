@@ -10,7 +10,7 @@ import argparse
 from umccr_utils.aws_wrappers import check_credentials, get_master_ec2_instance_id_from_pcluster_id
 from umccr_utils.miscell import run_subprocess_proc
 from umccr_utils.logger import get_logger
-from umccr_utils.globals import AWS_REGION
+from umccr_utils.globals import AWS_REGION, CFN_STATUSES
 from umccr_utils.help import print_extended_help
 from umccr_utils.checks import check_env
 from io import StringIO
@@ -19,9 +19,6 @@ import sys
 
 
 logger = get_logger()
-
-# TODO - collect them all and add to globals
-no_master_instance_statuses = ["CREATE_IN_PROGRESS", "CREATE_FAILED"]
 
 
 def get_args():
@@ -112,14 +109,14 @@ def main():
     cluster_df = get_cluster_list()
 
     # Add Master column
-    cluster_df["Master"] = cluster_df.apply(lambda x: np.nan
-                                                      if x.Status in no_master_instance_statuses
-                                                      else get_master_ec2_instance_id_from_pcluster_id(x.Name),
-                                            axis="columns")
+    cluster_df["Head Node"] = cluster_df.apply(lambda x: np.nan
+                                                      if x.Status in CFN_STATUSES["completed"]
+                                                      else get_master_ec2_instance_id_from_pcluster_id(x["Name"]),
+                                                axis="columns")
 
     # Add Creator column
-    cluster_df["Creator"] = cluster_df.apply(lambda x: get_creator_tag(x.Master)
-                                                       if not pd.isna(x.Master)
+    cluster_df["Creator"] = cluster_df.apply(lambda x: get_creator_tag(x["Head Node"])
+                                                       if not pd.isna(x["Head Node"])
                                                        else np.nan,
                                              axis="columns")
 
