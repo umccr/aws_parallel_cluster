@@ -2,8 +2,8 @@ name: pcluster
 channels:
   - anaconda
   - conda-forge
-  - pandas
 dependencies:
+  - pandas
   - jq
   - python=3.8
   - pip

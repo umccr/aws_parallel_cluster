@@ -43,14 +43,21 @@ UMCCR's intent is to onboard users to AWS, first on HPC and then steadily **tran
 
 ### Prerequisites
 
-You must have [conda][miniconda] and [jq][jq_installation_page] before continuing. 
+You must have [conda][miniconda] and [jq][jq_installation_page] before continuing.
+
+Please ensure that you've [configured your aws account][configure_aws_account], and installed 
+the [aws session manager plugin][aws_session_manager_plugin]
 
 * MacOS users: 
    * Must have [`brew`][brew_home] installed
    * Must have [`coreutils`][coreutils_home] installed (via brew)  
+      * This ensures `greadlink` is installed and is required in the `install.sh` script for MacOS users.
    
 * Windows users 
    * Must be on Windows 10 with [`WSL2`][wsl2_home] installed (on Ubuntu).
+  
+* Linux users
+   * No additional prerequisites required. You've suffered for long enough. 
 
 ### Installation
 
@@ -59,15 +66,16 @@ Head to the [releases][releases] page to download the latest release.
 # Make sure conda is at the latest version
 conda update --name base conda
 # Run the installer - this creates a tmp folder 
-( 
+( \
   cd "$(mktemp -d)" && \
   wget "https://github.com/umccr/aws_parallel_cluster/releases/download/latest/release-latest.zip" && \
   unzip "release-latest" && \
-  bash "release-latest/install.sh" 
+  bash "release-latest/install.sh" \ 
 )
 ```
 
 #### From source
+> Not recommended at this point  
 
 You can also clone this github directory and checkout out the latest tag and run the installation script
 
@@ -353,3 +361,5 @@ Many people arent happy about this. You can rant to them [here][aws_doesnt_suppo
 [coreutils_home]: https://formulae.brew.sh/formula/coreutils
 [brew_home]: https://brew.sh/
 [wsl2_home]: https://docs.microsoft.com/en-us/windows/wsl/install-win10
+[configure_aws_account]: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html
+[aws_session_manager_plugin]: https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
