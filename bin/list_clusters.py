@@ -92,7 +92,7 @@ def print_df(cluster_df):
     """
     import sys
 
-    cluster_df.to_csv(sys.stdout, index=False, header=True)
+    cluster_df.to_csv(sys.stdout, index=False, header=True, sep="\t")
 
 
 def main():
