@@ -7,9 +7,9 @@ Start a cluster
 import argparse
 import json
 from json.decoder import JSONDecodeError
-from umccr_utils.logger import get_logger
+from umccr_utils.logger import get_logger, initialise_logger
 from umccr_utils.aws_wrappers import get_master_ec2_instance_id_from_pcluster_id, get_aws_account_name, \
-    get_parallel_cluster_s3_path, get_ami_id, get_ami_version_str
+    get_parallel_cluster_s3_path, get_ami_id, get_ami_version_str, get_parallel_cluster_tags
 from umccr_utils.version import version as umccr_version
 import tempfile
 from umccr_utils.checks import check_env
@@ -21,6 +21,8 @@ from umccr_utils.globals import \
     AWS_GLOBAL_SETTINGS, AWS_REGION, AWS_CLUSTER_BASICS, AWS_SSM_PARAMETER_KEYS, AWS_NETWORK, \
     AWS_PARTITION_QUEUES, AWS_FILESYSTEM, AWS_COMPUTE_RESOURCES, AWS_ALIASES
 import sys
+
+initialise_logger()
 
 logger = get_logger()
 
@@ -72,22 +74,25 @@ def set_args(args):
     """
 
     # Check extra-parameters can be loaded as a json string
-    extra_parameters_arg = getattr(args, "extra-parameters", None)
+    extra_parameters_arg = getattr(args, "extra_parameters", None)
 
     if extra_parameters_arg is not None:
         extra_parameters_json = str_to_json(extra_parameters_arg)
-        setattr(args, "extra-parameters-json", extra_parameters_json)
+        setattr(args, "extra_parameters_json", extra_parameters_json)
     else:
-        setattr(args, "extra-parameters-json", None)
+        setattr(args, "extra_parameters_json", None)
 
     # Check tag parameters can be loaded as a json string
     tag_parameters_arg = getattr(args, "tags", None)
 
     if tag_parameters_arg is not None:
         tag_parameters_json = str_to_json(tag_parameters_arg)
-        setattr(args, "tag-parameters-json", tag_parameters_json)
+        setattr(args, "tag_parameters_json", tag_parameters_json)
     else:
-        setattr(args, "tag-parameters-json", None)
+        setattr(args, "tag_parameters_json", None)
+
+    # Append tag_parameters_json to tags
+    setattr(args, "tags_json", get_parallel_cluster_tags(getattr(args, "tag_parameters_json", {})))
 
     return args
 
@@ -142,7 +147,9 @@ def create_configuration_file(args):
     :return:
     """
 
-    configuration_temp_file = tempfile.NamedTemporaryFile(delete=False)
+    configuration_temp_file = tempfile.NamedTemporaryFile(prefix="pcluster-{}".format(getattr(args, "cluster_name", "")),
+                                                          suffix=".conf",
+                                                          delete=False)
 
     pcluster_config = configparser.ConfigParser()
 
@@ -213,6 +220,11 @@ def run_pcluster_create(pcluster_create_command):
     Run pcluster create command
     :return:
     """
+
+    logger.info("Submitting pcluster create command \"{}\"".format(
+        " ".join(map(str, pcluster_create_command))
+    ))
+
     pcluster_create_returncode, pcluster_create_stdout, pcluster_create_stderr = \
         run_subprocess_proc(pcluster_create_command, capture_output=True)
 

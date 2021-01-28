@@ -162,7 +162,8 @@ def get_master_ec2_instance_id_from_pcluster_id(pcluster_id):
                                   pcluster_id]
 
     # Get returncode, stdout, stderr
-    pcluster_instances_returncode, pcluster_stdout, pcluster_stderr = run_subprocess_proc(pcluster_instances_command)
+    pcluster_instances_returncode, pcluster_stdout, pcluster_stderr = run_subprocess_proc(pcluster_instances_command,
+                                                                                          capture_output=True)
 
     if not pcluster_instances_returncode == 0:
         raise PClusterInstanceError
@@ -268,7 +269,10 @@ def get_parallel_cluster_tags(tags):
     """
 
     # Make sure we don't override input dict
-    tags = tags.copy()
+    if tags is None:
+        tags = {}
+    else:
+        tags = tags.copy()
 
     # Get a user tag
     if "Creator" not in tags.keys():

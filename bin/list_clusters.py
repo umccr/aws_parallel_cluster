@@ -13,7 +13,6 @@ from umccr_utils.logger import get_logger
 from umccr_utils.globals import AWS_REGION, CFN_STATUSES
 from umccr_utils.help import print_extended_help
 from umccr_utils.checks import check_env
-from io import StringIO
 import boto3
 import sys
 
@@ -32,6 +31,7 @@ def get_args():
 
     parser.add_argument("--help-ext",
                         help="Print the extended help",
+                        action="store_true",
                         required=False)
 
     args = parser.parse_args()
@@ -82,7 +82,16 @@ def get_creator_tag(master_id):
 
     ec2instance = resource.Instance(master_id)
 
-    return ec2instance.tags["Creator"]
+    # Check "tags" is an attribute of the instance.
+    if getattr(ec2instance, "tags", None) is None:
+        return None
+
+    # Iterate through the list of tags
+    for tag in ec2instance.tags:
+        if tag["Key"] == "Creator":
+            return tag["Value"]
+    # Found nothing, return
+    return None
 
 
 def print_df(cluster_df):
@@ -92,7 +101,43 @@ def print_df(cluster_df):
     """
     import sys
 
-    cluster_df.to_csv(sys.stdout, index=False, header=True, sep="\t")
+    cluster_df.to_string(sys.stdout, index=False, header=True)
+    # Print an empty line to finish
+    print()
+
+
+def get_headnode_from_pcluster_row(pd_series):
+    """
+    From the cluster list collect the id of the head node, given the pcluster has completed
+    :param pd_series:
+    :return:
+    """
+
+    if pd_series['Status'] in CFN_STATUSES["completed"]:
+        return get_master_ec2_instance_id_from_pcluster_id(pd_series["Name"])
+
+    return np.nan
+
+
+def get_creator_from_head_node_tag(pd_series):
+    """
+    From the cluster list collect the id of the head node, given the pcluster has completed
+    :param pd_series:
+    :return:
+    """
+
+    # Check head node exists Head node
+    if not pd.isna(pd_series["Head Node"]):
+        creator = get_creator_tag(pd_series["Head Node"])
+    else:
+        # Return NA if no head node
+        return np.nan
+
+    # Check creator also isn't none
+    if creator is not None:
+        return creator
+
+    return np.nan
 
 
 def main():
@@ -112,15 +157,11 @@ def main():
     cluster_df = get_cluster_list()
 
     # Add Master column
-    cluster_df["Head Node"] = cluster_df.apply(lambda x: np.nan
-                                                      if x.Status not in CFN_STATUSES["completed"]
-                                                      else get_master_ec2_instance_id_from_pcluster_id(x["Name"]),
+    cluster_df["Head Node"] = cluster_df.apply(get_headnode_from_pcluster_row,
                                                 axis="columns")
 
     # Add Creator column
-    cluster_df["Creator"] = cluster_df.apply(lambda x: get_creator_tag(x["Head Node"])
-                                                       if not pd.isna(x["Head Node"])
-                                                       else np.nan,
+    cluster_df["Creator"] = cluster_df.apply(get_creator_from_head_node_tag,
                                              axis="columns")
 
     print_df(cluster_df)

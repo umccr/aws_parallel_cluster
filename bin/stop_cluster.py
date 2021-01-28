@@ -28,6 +28,7 @@ def get_args():
 
     parser.add_argument("--help-ext",
                         help="Print the extended help",
+                        action="store_true",
                         required=False)
 
     args = parser.parse_args()
