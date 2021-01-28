@@ -341,7 +341,7 @@ connect_sacct_to_mysql_db() {
     echo_stderr "Registering ${stack_name_lower_case} as a cluster"
     # Override prompt with 'yes'
     # Write to /dev/null incase of a SIGPIEP signal
-    yes 2>/dev/null | /opt/slurm/bin/sacctmgr add cluster "${stack_name_lower_case}"
+    /opt/slurm/bin/sacctmgr add cluster "${stack_name_lower_case}" --immediate
   fi
 
   # Restart the slurm control service daemon

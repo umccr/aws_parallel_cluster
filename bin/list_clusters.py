@@ -113,7 +113,7 @@ def main():
 
     # Add Master column
     cluster_df["Head Node"] = cluster_df.apply(lambda x: np.nan
-                                                      if x.Status in CFN_STATUSES["completed"]
+                                                      if x.Status not in CFN_STATUSES["completed"]
                                                       else get_master_ec2_instance_id_from_pcluster_id(x["Name"]),
                                                 axis="columns")
 

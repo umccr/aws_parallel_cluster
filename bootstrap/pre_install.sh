@@ -134,7 +134,7 @@ set -euxo pipefail
 . "/etc/parallelcluster/cfnconfig"
 
 # Security updates
-yum update -y --security
+yum update -y -q --security
 
 # Start the docker service
 systemctl start docker
