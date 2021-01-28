@@ -241,13 +241,16 @@ enable_mem_on_slurm() {
   sed -i "${include_cluster_line_num}i${SLURM_CONF_DEFAULT_MEM_PER_NODE_LINE}" "${SLURM_CONF_FILE}"
 
   # FIXME Hardcoded key-pair-vals should be put in a dict / json
+  # compute partition
   sed -i '/^NodeName=compute-dy-c54xlarge/ s/$/ RealMemory=30000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
   sed -i '/^NodeName=compute-dy-m54xlarge/ s/$/ RealMemory=62000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
+  # compute-long partition
   sed -i '/^NodeName=compute-long-dy-c54xlarge/ s/$/ RealMemory=30000/' "${SLURM_COMPUTE_LONG_PARTITION_CONFIG_FILE}"
   sed -i '/^NodeName=compute-long-dy-m54xlarge/ s/$/ RealMemory=62000/' "${SLURM_COMPUTE_LONG_PARTITION_CONFIG_FILE}"
-  sed -i '/^NodeName=compute-dy-m54xlarge/ s/$/ RealMemory=62000/' "${SLURM_COMPUTE_PARTITION_CONFIG_FILE}"
+  # copy partition
   sed -i '/^NodeName=copy-dy-m5large/ s/$/ RealMemory=6000/' "${SLURM_COPY_PARTITION_CONFIG_FILE}"
-  sed -i '/^NodeName=long-dy-m5large/ s/$/ RealMemory=6000/' "${SLURM_LONG_PARTITION_CONFIG_FILE}"
+  # copy-long partition
+  sed -i '/^NodeName=copy-long-dy-m5large/ s/$/ RealMemory=6000/' "${SLURM_COPY_LONG_PARTITION_CONFIG_FILE}"
 
   # Replace SelectTypeParameters default (CR_CPU) with (CR_CPU_MEMORY)
   sed -i "/^SelectTypeParameters=/s/.*/SelectTypeParameters=${SLURM_SELECT_TYPE_PARAMETERS}/" "${SLURM_CONF_FILE}"
@@ -280,9 +283,6 @@ connect_sacct_to_mysql_db() {
   sed -i "/^DbdHost=/s/.*/DbdHost=\"$(hostname -s)\"/" "${SLURM_DBD_CONF_FILE_PATH}"
   sed -i "/^StoragePass=/s/.*/StoragePass=$(get_rds_passwd)/" "${SLURM_DBD_CONF_FILE_PATH}"
   sed -i "/^StorageHost=/s/.*/StorageHost=$(get_rds_endpoint)/" "${SLURM_DBD_CONF_FILE_PATH}"
-
-  # Delete password and endpoint files under /root
-  rm -f "${SLURM_DBD_ENDPOINT_FILE_PATH}" "${SLURM_DBD_PWD_FILE_PATH}"
 
   # Update slurm.conf
   echo_stderr "Updating slurm.conf"
@@ -341,7 +341,7 @@ connect_sacct_to_mysql_db() {
     echo_stderr "Registering ${stack_name_lower_case} as a cluster"
     # Override prompt with 'yes'
     # Write to /dev/null incase of a SIGPIEP signal
-    yes 2>/dev/null | /opt/slurm/bin/sacctmgr add cluster "${stack_name_lower_case}"
+    /opt/slurm/bin/sacctmgr add cluster "${stack_name_lower_case}" --immediate
   fi
 
   # Restart the slurm control service daemon
@@ -349,16 +349,6 @@ connect_sacct_to_mysql_db() {
   systemctl restart slurmctld
 }
 
-modify_slurm_port_range() {
-  : '
-  Necessary only for AWS PC 2.9.1
-  Seems to get the wrong port range 6817-6827
-  We change this to 6820 to 6830
-  Stops 6818 and 6819, used for slurmdb connections
-  being interfered with
-  '
-  sed -i 's/SlurmctldPort=6817-6827/SlurmctldPort=6820-6830/' "${SLURM_CONF_FILE}"
-}
 
 get_sinteractive_command() {
   # Ensure directory is available
@@ -369,26 +359,6 @@ get_sinteractive_command() {
   chmod +x "${SLURM_SINTERACTIVE_FILE_PATH}"
   # Link to folder already in path
   ln -s "${SLURM_SINTERACTIVE_FILE_PATH}" "/usr/local/bin/sinteractive"
-}
-
-cloud_watch_master_fix() {
-  : '
-  Workaround for https://github.com/aws/aws-parallelcluster/issues/2162
-  '
-  sed -i 's/start_time = datetime.now(tz=timezone.utc)/start_time = datetime.now()/' \
-    "${CLUSTERMGTD_PATH}"
-
-  systemctl restart supervisord
-}
-
-cloud_watch_compute_fix() {
-  : '
-  Current time parameter used in other spots need the UTC time stamp
-  '
-  sed -i 's/sleep_remaining_loop_time(computemgtd_config.loop_time, current_time)/sleep_remaining_loop_time(computemgtd_config.loop_time, datetime.now())/' \
-    "${COMPUTEMGTD_PATH}"
-
-  systemctl restart supervisord
 }
 
 : '
@@ -698,7 +668,7 @@ SLURM_CONF_FILE="/opt/slurm/etc/slurm.conf"
 SLURM_COMPUTE_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_compute_partition.conf"
 SLURM_COMPUTE_LONG_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_compute-long_partition.conf"
 SLURM_COPY_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_copy_partition.conf"
-SLURM_LONG_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_long_partition.conf"
+SLURM_COPY_LONG_PARTITION_CONFIG_FILE="/opt/slurm/etc/pcluster/slurm_parallelcluster_copy-long_partition.conf"
 SLURM_SINTERACTIVE_S3="$(get_pc_s3_root)/slurm/scripts/sinteractive.sh"
 SLURM_SINTERACTIVE_FILE_PATH="/opt/slurm/scripts/sinteractive"
 # If just CR_CPU, then slurm will only look at CPU
@@ -723,10 +693,6 @@ SLURM_DBD_CONF_FILE_PATH="/opt/slurm/etc/slurmdbd.conf"
 SLURM_DBD_SSM_KEY_PASSWD="/parallel_cluster/main/slurm_rds_db_password"
 # RDS Endpoint
 SLURM_DBD_SSM_KEY_ENDPOINT="/parallel_cluster/main/slurm_rds_endpoint"
-
-# Files to manipulate for https://github.com/aws/aws-parallelcluster/issues/2162
-CLUSTERMGTD_PATH="/opt/parallelcluster/pyenv/versions/3.6.9/envs/node_virtualenv/lib/python3.6/site-packages/slurm_plugin/clustermgtd.py"
-COMPUTEMGTD_PATH="/opt/parallelcluster/pyenv/versions/3.6.9/envs/node_virtualenv/lib/python3.6/site-packages/slurm_plugin/computemgtd.py"
 
 # Globals - Cromwell
 CROMWELL_SLURM_CONFIG_FILE_PATH="/opt/cromwell/configs/slurm.conf"
@@ -755,7 +721,7 @@ START
 '
 
 # Exit on failed command
-set -e
+set -euxo pipefail
 
 # Source config, tells us if we're on a compute or master node
 . "/etc/parallelcluster/cfnconfig"
@@ -775,30 +741,25 @@ case "${cfn_node_type}" in
       # Add sinteractive
       echo_stderr "Adding sinteractive command to /usr/local/bin"
       get_sinteractive_command
-      # Modify Slurm Port Range
-      echo_stderr "Modifying slurm port range - done before trying connect to slurm database"
-      modify_slurm_port_range
       # Connect slurm to rds
       echo_stderr "Connecting to slurm rds database"
       connect_sacct_to_mysql_db
-      # cloud_watch_fix
-      echo_stderr "Fixing loop_time bug to stop escalation of cloud watch errors"
-      cloud_watch_master_fix
       # Update base conda env
       echo_stderr "Updating base conda env"
       update_base_conda_env
       # Update bcbio conda env
-      echo_stderr "Updating bcbio-env"
-      update_bcbio_env
+      # TODO - reupload cromwell and bcbio scripts into ami
+      #echo_stderr "Updating bcbio-env"
+      #update_bcbio_env
       # Update cromwell env
-      echo_stderr "Update cromwell conda env for ec2-user"
-      update_cromwell_env
+      #echo_stderr "Update cromwell conda env for ec2-user"
+      #update_cromwell_env
       # Update toil env
       echo_stderr "Update the toil env for ec2-user"
       update_toil_env
       # Start cromwell service
-      echo_stderr "Creating start cromwell script"
-      create_start_cromwell_script
+      #echo_stderr "Creating start cromwell script"
+      #create_start_cromwell_script
       # Write SHARED_DIR env var to bashrc
       echo_stderr "Setting SHARED_DIR for user"
       write_shared_dir_to_bashrc
@@ -810,8 +771,7 @@ case "${cfn_node_type}" in
       get_github_access
     ;;
     ComputeFleet)
-      echo_stderr "Fixing loop_time bug to stop escalation of cloud watch errors"
-      cloud_watch_compute_fix
+      true
     ;;
     *)
       # Do nothing

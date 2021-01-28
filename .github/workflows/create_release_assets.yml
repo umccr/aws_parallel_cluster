@@ -1,12 +1,16 @@
+name: Create and Upload Release
+
 on:
   push:
-    # Sequence of patterns matched against refs/tags
-    tags:
-    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
-    - 'pre-v*'  # Push events to matching pre-v, i.e pre-v1.0, pre-v20.15.10
+   # Sequence of patterns matched against refs/tags
+   tags:
+    - 'v*' # Push events to matching v*, i.e v1.0, v20.15.10 etc
+    - 'pre-v*' # Push events to matching pre-v, i.ve pre-v1.0, pre-v20.15.10
     - 'latest'
-
-name: Create and Upload Release
+  #workflow_run: To replace push trigger once CDK starts working
+  #  workflows: [ "Build Custom AMI" ]
+  #  types:
+  #    - completed
 
 jobs:
   sync_s3:
@@ -47,7 +51,7 @@ jobs:
           #role-session-name: parallel_cluster
       # Copy files to s3
       - name: Copy S3 files
-        uses: ./.github/actions/sync-s3
+        uses: ./.github/actions/sync-bootstrap
         with:
           tag_name: ${{ steps.get_tag_name.outputs.tag_name }}
           ssm_s3_pc_config_root: "/parallel_cluster/main/s3_config_root"
@@ -62,7 +66,7 @@ jobs:
       - name: Get Tag Name
         id: get_tag_name
         run: echo "::set-output name=tag_name::$(basename ${{ github.ref }})"
-          # Is pre-release?
+      # Is pre-release?
       - name: Determine if this is a pre-release or not
         id: is_prerelease
         run: echo "::set-output name=prerelease::$(if [[ "${{ steps.get_tag_name.outputs.tag_name }}" == "pre"* || "${{ steps.get_tag_name.outputs.tag_name }}" == "dev" ]]; then echo true; else echo false; fi)"
@@ -70,7 +74,7 @@ jobs:
       - name: Build project # This would actually build your project, using zip for an example artifact
         uses: ./.github/actions/build-release
         with:
-          tag_name: ${{ steps.get_tag_name.outputs.tag_name }}
+          git_tag: ${{ steps.get_tag_name.outputs.tag_name }}
       # Create release zip file
       - name: Create Release
         id: create_release
@@ -90,7 +94,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          # This pulls from the CREATE RELEASE step above,
+          # referencing it's ID to get its outputs object, which include a `upload_url`.
+          # See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: release-${{ steps.get_tag_name.outputs.tag_name }}.zip
           asset_name: release-${{ steps.get_tag_name.outputs.tag_name }}.zip
           asset_content_type: application/zip

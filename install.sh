@@ -7,7 +7,31 @@ Simple script that:
 3. Adds scripts to bin subdir in <pcluster_conda_prefix>
 '
 
-set -euxo pipefail
+# Ensure installation fails on non-zero exit code
+set -euo pipefail
+
+###########
+# GLOBALS
+###########
+
+PCLUSTER_CONDA_ENV_NAME="pcluster"
+REQUIRED_CONDA_VERSION="4.9.0"
+
+##########
+# GET HELP
+##########
+
+help_message="Usage: install.sh
+
+Installs AWS pcluster and scripts into the conda env '${PCLUSTER_CONDA_ENV_NAME}'.
+
+You must have conda (${REQUIRED_CONDA_VERSION}) and jq installed.
+
+MacOS users, please install greadlink through 'brew install coreutils'
+
+Optional parameters:
+         -y/--yes: Create/Update conda env without asking
+"
 
 ###########
 # CHECKS
@@ -28,6 +52,24 @@ has_jq() {
   if ! jq --version >/dev/null; then
     echo_stderr "Could not find command 'jq'. Please ensure jq is installed before continuing"
     return 1
+  fi
+}
+
+check_readlink_program() {
+  if [[ "${OSTYPE}" == "darwin"* ]]; then
+    readlink_program="greadlink"
+  else
+    readlink_program="readlink"
+  fi
+
+  if ! type "${readlink_program}"; then
+      if [[ "${readlink_program}" == "greadlink" ]]; then
+        echo_stderr "On a mac but 'greadlink' not found"
+        echo_stderr "Please run 'brew install coreutils' and then re-run this script"
+        return 1
+      else
+        echo_stderr "readlink not installed. Please install before continuing"
+      fi
   fi
 }
 
@@ -122,13 +164,64 @@ check_conda_version() {
   fi
 }
 
-###########
-# GLOBALS
-###########
+run_conda_create() {
+  : '
+  Run the conda create command
+  '
 
-PCLUSTER_CONDA_ENV_NAME="pcluster"
-CONDA_ENV_FILE="$(get_this_path)/conf/pcluster-env.yaml"
-REQUIRED_CONDA_VERSION="4.9.0"
+  local name="$1"
+  local env_file="$2"
+
+  conda env create \
+    --quiet \
+    --name="${name}" \
+    --file="${env_file}"
+}
+
+run_conda_update() {
+  : '
+  Run the conda update command
+  '
+
+  local name="$1"
+  local env_file="$2"
+
+  conda env update \
+    --quiet \
+    --name="${name}" \
+    --file="${env_file}"
+}
+
+print_help() {
+  echo_stderr "${help_message}"
+}
+
+###############
+# GET ARGUMENTS
+###############
+
+# Otherwise fails for unbound variable "$1"
+set +u
+
+yes="false"
+while true; do
+  case "$1" in
+    -y|--yes)
+      yes="true"
+      shift 1
+      ;;
+    -h|--help)
+      print_help
+      exit 0
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+# Reset this
+set -u
 
 ############
 # RUN CHECKS
@@ -150,58 +243,131 @@ if ! has_jq; then
 fi
 
 if ! check_conda_version; then
-  echo_stderr "Please run 'conda update -n base conda'"
+  echo_stderr "Your conda version is out of date, please run \"conda update -n base -c defaults conda\" before continuing"
   exit 1
 fi
+
+if ! check_readlink_program; then
+  echo_stderr "Failed at readlink check stage"
+  exit 1
+fi
+
+##########################################
+# Strip __AWS_PARALLEL_CLUSTER_VERSION__
+##########################################
+
+: '
+Only needed in the event that one is installing from source
+in which case we dont have a clue what version to install, therefore we eradicate it completely
+'
+
+# Create alternative source file
+conda_env_file="$(get_this_path)/conf/pcluster-env.yaml"
+
+if [[ "${OSTYPE}" == "darwin"* ]]; then
+  tmp_conda_env_file="$(mktemp -t "conda.env.").yaml"
+else
+  tmp_conda_env_file="$(mktemp --suffix ".conda.env.yaml")"
+fi
+
+# Swap out "aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__"
+# for aws-parallelcluster
+sed "s/aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__/aws-parallelcluster/" \
+  "${conda_env_file}" > "${tmp_conda_env_file}"
+# FIXME - scope for getting this value rather than ignoring it
+# TAG_REGEX='^refs\/tags\/(?:pre-)?v(\d+\.\d+\.\d+)-(?:\d+\.\d+\.\d+)$'
+# determine if we're in the right git repo?
+# get the current checkout tag, match it to a versioned tag -> might need to go remote
+# strip the refs/tags etc replace
+
 
 #########################
 # CREATE/UPDATE CONDA ENV
 #########################
 
 if ! has_conda_env; then
-  echo_stderr "pcluster conda env does not exist. Creating"
-  conda env create \
-    --quiet \
-    --name "${PCLUSTER_CONDA_ENV_NAME}" \
-    --file "${CONDA_ENV_FILE}"
+  if [[ "${yes}" == "true" ]]; then
+    echo_stderr "Creating pcluster conda env"
+    run_conda_create "${PCLUSTER_CONDA_ENV_NAME}" "${tmp_conda_env_file}"
+  else
+    echo_stderr "pcluster conda env does not exist - would you like to create one?"
+    select yn in "Yes" "No"; do
+      case "$yn" in
+          "Yes" )
+            run_conda_create "${PCLUSTER_CONDA_ENV_NAME}" "${tmp_conda_env_file}"
+            break;;
+          "No" )
+            echo_stderr "Installation cancelled"
+            exit 0;;
+      esac
+    done
+  fi
 else
-  echo_stderr "Found conda env 'pcluster' - running update"
-  conda env update \
-    --quiet \
-    --name "${PCLUSTER_CONDA_ENV_NAME}" \
-    --file "${CONDA_ENV_FILE}"
+  if [[ "${yes}" == "true" ]]; then
+    echo_stderr "Updating pcluster conda env"
+    run_conda_update "${PCLUSTER_CONDA_ENV_NAME}" "${tmp_conda_env_file}"
+  else
+    echo_stderr "Found conda env 'pcluster' - would you like to run an update?"
+    select yn in "Yes" "No"; do
+      case "$yn" in
+          "Yes" )
+            run_conda_update "${PCLUSTER_CONDA_ENV_NAME}" "${tmp_conda_env_file}"
+            break;;
+          "No" )
+            echo_stderr "Installation cancelled"
+            exit 0;;
+      esac
+    done
+  fi
 fi
 
 # Now we can obtain the env prefix which is where we will place our
 conda_pcluster_env_prefix="$(get_conda_env_prefix)"
 
-##################
-# COPY CONFIG
-##################
-
-echo_stderr "Adding pcluster.conf to \"${conda_pcluster_env_prefix}/etc/pcluster.conf\""
-mkdir -p "${conda_pcluster_env_prefix}/etc/"
-cp "$(get_this_path)/conf/pcluster.conf" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
-
-
-# Ensure that if we're installing from the git repo, that we turn '__VERSION__' into 'latest'
-if [[ "${OSTYPE}" == "darwin"* ]]; then
-    sed -i "" "s/__VERSION__/latest/g" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
-else
-    sed -i "s/__VERSION__/latest/g" "${conda_pcluster_env_prefix}/etc/pcluster.conf"
-fi
-
 ###########
 # COPY BINS
 ###########
 
-echo_stderr "Adding scripts to \"${conda_pcluster_env_prefix}/bin\""
+echo_stderr "Adding python scripts to \"${conda_pcluster_env_prefix}/bin\""
 # Ensure all the scripts are executable
-find "$(get_this_path)/bin/" -maxdepth 1 -type f -name "*.sh" -exec chmod +x {} \;
+find "$(get_this_path)/bin/" \
+  -mindepth 1 -maxdepth 1 \
+  -type f -name "*.py" \
+  -exec chmod +x {} \;
 
 # Copy over to conda env
 rsync --archive \
-  --include='*.sh' --exclude='*'\
+  --include='*.py' --exclude='*' \
   "$(get_this_path)/bin/" "${conda_pcluster_env_prefix}/bin/"
 
+###########
+# COPY LIBS
+###########
+: '
+Copy over umccr_utils to library path
+'
+
+rsync --archive \
+  --include='*.py' --exclude='*' \
+  "$(get_this_path)/lib/umccr_utils/" "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/"
+
+#####################
+# REPLACE __VERSION__
+#####################
+: '
+Only needed in the event that one is installing from source
+'
+
+sed "s/__VERSION__/latest/" \
+  "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/version.py" > \
+  "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/version.py.tmp"
+
+mv "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/version.py.tmp" \
+  "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/version.py"
+
+
+###############
+# END OF SCRIPT
+###############
 echo_stderr "Installation Complete!"
+
