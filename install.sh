@@ -17,6 +17,22 @@ set -euo pipefail
 PCLUSTER_CONDA_ENV_NAME="pcluster"
 REQUIRED_CONDA_VERSION="4.9.0"
 
+##########
+# GET HELP
+##########
+
+help_message="Usage: install.sh
+
+Installs AWS pcluster and scripts into the conda env '${PCLUSTER_CONDA_ENV_NAME}'.
+
+You must have conda (${REQUIRED_CONDA_VERSION}) and jq installed.
+
+MacOS users, please install greadlink through 'brew install coreutils'
+
+Optional parameters:
+         -y/--yes: Create/Update conda env without asking
+"
+
 ###########
 # CHECKS
 ###########
@@ -148,6 +164,56 @@ check_conda_version() {
   fi
 }
 
+run_conda_create() {
+  : '
+  Run the conda create command
+  '
+
+  local name="$1"
+  local env_file="$2"
+
+  conda env create \
+    --quiet \
+    --name="${name}" \
+    --file="${env_file}"
+}
+
+run_conda_update() {
+  : '
+  Run the conda update command
+  '
+
+  local name="$1"
+  local env_file="$2"
+
+  conda env update \
+    --quiet \
+    --name="${name}" \
+    --file="${env_file}"
+}
+
+print_help() {
+  echo_stderr "${help_message}"
+}
+
+###############
+# GET ARGUMENTS
+###############
+
+yes="false"
+while true; do
+	case "$1" in
+		-y|--yes)
+			yes="true"
+			shift 1
+			;;
+	  -h|--help)
+	    print_help
+	    exit 0
+	    ;;
+  esac
+done
+
 ############
 # RUN CHECKS
 ############
@@ -211,36 +277,39 @@ sed "s/aws-parallelcluster == __AWS_PARALLEL_CLUSTER_VERSION__/aws-parallelclust
 #########################
 
 if ! has_conda_env; then
-  echo_stderr "pcluster conda env does not exist - would you like to create one?"
+  if [[ "${yes}" == "true" ]]; then
+    echo_stderr "Creating pcluster conda env"
+    run_conda_create "${PCLUSTER_CONDA_ENV_NAME}" "${tmp_conda_env_file}"
+  else
+    echo_stderr "pcluster conda env does not exist - would you like to create one?"
     select yn in "Yes" "No"; do
-    case "$yn" in
-        "Yes" )
-          conda env create \
-            --quiet \
-            --name "${PCLUSTER_CONDA_ENV_NAME}" \
-            --file "${tmp_conda_env_file}"
-          break;;
-        "No" )
-          echo_stderr "Installation cancelled"
-          exit 0;;
-    esac
-  done
-
+      case "$yn" in
+          "Yes" )
+            run_conda_create "${PCLUSTER_CONDA_ENV_NAME}" "${tmp_conda_env_file}"
+            break;;
+          "No" )
+            echo_stderr "Installation cancelled"
+            exit 0;;
+      esac
+    done
+  fi
 else
-  echo_stderr "Found conda env 'pcluster' - would you like to run an update?"
-  select yn in "Yes" "No"; do
-    case "$yn" in
-        "Yes" )
-          conda env update \
-            --quiet \
-            --name "${PCLUSTER_CONDA_ENV_NAME}" \
-            --file "${tmp_conda_env_file}"
-          break;;
-        "No" )
-          echo_stderr "Installation cancelled"
-          exit 0;;
-    esac
-  done
+  if [[ "${yes}" == "true" ]]; then
+    echo_stderr "Updating pcluster conda env"
+    run_conda_update "${PCLUSTER_CONDA_ENV_NAME}" "${tmp_conda_env_file}"
+  else
+    echo_stderr "Found conda env 'pcluster' - would you like to run an update?"
+    select yn in "Yes" "No"; do
+      case "$yn" in
+          "Yes" )
+            run_conda_update "${PCLUSTER_CONDA_ENV_NAME}" "${tmp_conda_env_file}"
+            break;;
+          "No" )
+            echo_stderr "Installation cancelled"
+            exit 0;;
+      esac
+    done
+  fi
 fi
 
 # Now we can obtain the env prefix which is where we will place our
@@ -265,8 +334,10 @@ rsync --archive \
 ###########
 # COPY LIBS
 ###########
+: '
+Copy over umccr_utils to library path
+'
 
-# Copy over umccr_utils to library path
 rsync --archive \
   --include='*.py' --exclude='*' \
   "$(get_this_path)/lib/umccr_utils/" "${conda_pcluster_env_prefix}/lib/python3.8/umccr_utils/"
@@ -274,7 +345,6 @@ rsync --archive \
 #####################
 # REPLACE __VERSION__
 #####################
-
 : '
 Only needed in the event that one is installing from source
 '
