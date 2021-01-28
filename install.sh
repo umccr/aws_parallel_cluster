@@ -200,19 +200,28 @@ print_help() {
 # GET ARGUMENTS
 ###############
 
+# Otherwise fails for unbound variable "$1"
+set +u
+
 yes="false"
 while true; do
-	case "$1" in
-		-y|--yes)
-			yes="true"
-			shift 1
-			;;
-	  -h|--help)
-	    print_help
-	    exit 0
-	    ;;
+  case "$1" in
+    -y|--yes)
+      yes="true"
+      shift 1
+      ;;
+    -h|--help)
+      print_help
+      exit 0
+      ;;
+    *)
+      break
+      ;;
   esac
 done
+
+# Reset this
+set -u
 
 ############
 # RUN CHECKS
