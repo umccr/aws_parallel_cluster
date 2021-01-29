@@ -33,13 +33,16 @@ jobs:
     steps:
       # Standard checkout step
       - name: Checkout code
+        id: git_checkout
         uses: actions/checkout@v2
+        run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
       # Get tag name, from /ref/heads/<tag> to <tag>
       - name: Get Tag Name
         id: get_tag_name
         run: echo "::set-output name=tag_name::$(basename ${{ github.ref }})"
       # Setup aws credentials so we can sync s3 files
       - name: Configure AWS Credentials
+        id: configure_aws_credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets[matrix.aws_access_key_id] }}
@@ -51,6 +54,7 @@ jobs:
           #role-session-name: parallel_cluster
       # Copy files to s3
       - name: Copy S3 files
+        id: copy_s3_files
         uses: ./.github/actions/sync-bootstrap
         with:
           tag_name: ${{ steps.get_tag_name.outputs.tag_name }}
@@ -61,7 +65,9 @@ jobs:
     steps:
       # Standard checkout step
       - name: Checkout code
+        id: git_checkout
         uses: actions/checkout@v2
+        run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
       # Get tag name, from /ref/heads/<tag> to <tag>
       - name: Get Tag Name
         id: get_tag_name

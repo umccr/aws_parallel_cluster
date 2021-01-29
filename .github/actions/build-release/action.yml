@@ -25,17 +25,6 @@ runs:
                      cut -d' ' -f1
                     })"
 
-        ## DEBUG
-        echo "$(git show-ref | grep "${commit_id}")"
-
-        echo "$(git show-ref | grep "${commit_id}" | grep "refs/tags")"
-
-        echo "$(git show-ref | grep "${commit_id}" | grep "refs/tags" | grep -v "refs/tags/latest")"
-
-        echo "$(git show-ref | grep "${commit_id}" | grep "refs/tags" | grep -v "refs/tags/latest" | cut -d' ' -f2)"
-
-        ## END DEBUG
-
         # Now get git tag from commit id if it isn't 'latest'
         git_tag_non_latest="$(git show-ref | {
                               # Collect the tags on the commit id connected to 'latest'
