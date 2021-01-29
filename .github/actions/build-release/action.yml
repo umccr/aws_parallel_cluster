@@ -26,18 +26,22 @@ runs:
                     })"
 
         # Now get git tag from commit id if it isn't 'latest'
-        git_tag="$(git show-ref | {
-                   grep "${commit_id}"
-                  } | {
-                   grep "refs/tags"
-                  } | {
-                   grep -v "refs/tags/latest"
-                  } | {
-                   cut -d' ' -f2
-                  })"
+        git_tag_non_latest="$(git show-ref | {
+                              # Collect the tags on the commit id connected to 'latest'
+                              grep "${commit_id}"
+                             } | {
+                              # Filter out heads/remotes, only want the tags
+                              grep "refs/tags"
+                             } | {
+                              # Filter out 'latest' tag, should just be the release left
+                              grep -v "refs/tags/latest"
+                             } | {
+                              # Now get the name of the release
+                              cut -d' ' -f2
+                             })"
 
         # Set git tag as output for this step
-        echo "::set-output name=git_tag::${git_tag}"
+        echo "::set-output name=git_tag_non_latest::${git_tag_non_latest}"
     - id: update-python-alternatives
       shell: bash
       run: |
@@ -70,7 +74,7 @@ runs:
     - id: get-aws-parallel-cluster-version
       shell: python
       env:
-        GIT_TAG: ${{ steps.get-nonlatest-git-tag.outputs.git_tag }}
+        GIT_TAG: ${{ steps.get-nonlatest-git-tag.outputs.git_tag_non_latest }}
       run: |
         # Imports
         import sys
