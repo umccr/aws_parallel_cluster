@@ -115,6 +115,7 @@ runs:
       shell: bash
       env:
         AWS_PARALLEL_CLUSTER_VERSION: ${{ steps.get-aws-parallel-cluster-version.outputs.aws_parallel_cluster_version }}
+        NON_LATEST_PCLUSTER_VERSION: ${{ steps.get-nonlatest-git-tag.outputs.git_tag_non_latest }}
       run: |
         # Show running of script
         set -euxo pipefail
@@ -144,7 +145,7 @@ runs:
           "bin/umccr_utils/" "release-${{ inputs.git_tag }}/lib/umccr_utils/"
 
         # Update version.py for release
-        sed -i "s/__VERSION__/${{ inputs.git_tag }}/g" \
+        sed -i "s/__VERSION__/${NON_LATEST_PCLUSTER_VERSION}/" \
           "release-${{ inputs.git_tag }}/lib/umccr_utils/version.py"
 
         # Add conda-env yaml
