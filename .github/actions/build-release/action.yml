@@ -39,6 +39,7 @@ runs:
                               # Now get the name of the release
                               cut -d' ' -f2
                              })"
+        git_tag_non_latest="$(basename "${git_tag_non_latest}")"
 
         # Set git tag as output for this step
         echo "::set-output name=git_tag_non_latest::${git_tag_non_latest}"
@@ -86,11 +87,6 @@ runs:
 
         if git_tag is None or git_tag == "":
           sys.exit(1)
-
-        # Strip 'refs/tags/' from left side
-        # "refs/tags/v2.9.1-1.0.2" -> "v2.9.1-1.0.2"
-        # "refs/tags/pre-v2.9.1-1.0.2" -> "pre-v2.9.1-1.0.2"
-        git_tag = git_tag.lstrip("refs/tags/")
 
         # Strip 'pre-' from left side
         # "pre-v2.9.1-1.0.2" -> "v2.9.1-1.0.2"
