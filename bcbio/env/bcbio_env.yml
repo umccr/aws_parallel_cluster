@@ -2,6 +2,8 @@ name: bcbio_nextgen
 channels:
   - bioconda
   - conda-forge
+  - anaconda
   - defaults
 dependencies:
-  - bcbio-nextgen=1.2.3
+  - python=3.8
+  - bcbio-nextgen=1.2.5

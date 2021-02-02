@@ -709,7 +709,7 @@ CROMWELL_JAR_PATH="/opt/cromwell/jar/cromwell.jar"
 CROMWELL_SERVER_START_SCRIPT_PATH="/home/ec2-user/bin/start-cromwell-server.sh"
 
 # Globals - bcbio
-BCBIO_CONDA_ENV_NAME="bcbio_nextgen_vm"
+BCBIO_CONDA_ENV_NAME="bcbio_nextgen"
 
 # Globals - Toil
 TOIL_CONDA_ENV_NAME="toil"
@@ -748,18 +748,17 @@ case "${cfn_node_type}" in
       echo_stderr "Updating base conda env"
       update_base_conda_env
       # Update bcbio conda env
-      # TODO - reupload cromwell and bcbio scripts into ami
-      #echo_stderr "Updating bcbio-env"
-      #update_bcbio_env
+      echo_stderr "Updating bcbio-env"
+      update_bcbio_env
       # Update cromwell env
-      #echo_stderr "Update cromwell conda env for ec2-user"
-      #update_cromwell_env
+      echo_stderr "Update cromwell conda env for ec2-user"
+      update_cromwell_env
       # Update toil env
       echo_stderr "Update the toil env for ec2-user"
       update_toil_env
       # Start cromwell service
-      #echo_stderr "Creating start cromwell script"
-      #create_start_cromwell_script
+      echo_stderr "Creating start cromwell script"
+      create_start_cromwell_script
       # Write SHARED_DIR env var to bashrc
       echo_stderr "Setting SHARED_DIR for user"
       write_shared_dir_to_bashrc

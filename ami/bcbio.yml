@@ -26,7 +26,7 @@ phases:
             # Add bcbio env
             - |
               BCBIO_CONDA_ENV_FILE_PATH="/opt/bcbio/env/bcbio_env.yml"
-              BCBIO_CONDA_ENV_NAME="bcbio_nextgen_vm"
+              BCBIO_CONDA_ENV_NAME="bcbio_nextgen"
               su - ec2-user \
                 -c "cd \$(mktemp -d); \
                     cp \"${BCBIO_CONDA_ENV_FILE_PATH}\" ./; \
@@ -36,7 +36,7 @@ phases:
             # Update bcbio env
             # Many packages makes this necessary
             - |
-              BCBIO_CONDA_ENV_NAME="bcbio_nextgen_vm"
+              BCBIO_CONDA_ENV_NAME="bcbio_nextgen"
               su - ec2-user \
                   -c "conda update \
                         --name \"${BCBIO_CONDA_ENV_NAME}\" \
