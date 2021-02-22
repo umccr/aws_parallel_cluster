@@ -4,6 +4,7 @@
 Start a cluster
 """
 
+# Imports
 import argparse
 import json
 from json.decoder import JSONDecodeError
@@ -263,30 +264,38 @@ def main():
     Log success message
     """
 
+    # Arg help extension must be done fore collecting mandatory args
     if "--help-ext" in sys.argv:
         print_extended_help()
         sys.exit(0)
 
+    # Collect all sys arguments
     args = get_args()
 
+    # Adjust arguments as required
     args = set_args(args)
 
     # Check environment vars and we're logged in to aws
     check_env()
 
+    # Generate configuration file
     configuration_file = create_configuration_file(args)
 
+    # Generate pcluster command to run through subprocess
     pcluster_create_command = collate_pcluster_create_cli(cluster_name=getattr(args, "cluster_name", None),
                                                           configuration_file=configuration_file,
                                                           extra_parameters=getattr(args, "extra_parameters_json", None),
                                                           tags=getattr(args, "tags_json", None),
                                                           no_rollback=getattr(args, "no_rollback", None))
 
+    # Run command through subprocess
     run_pcluster_create(pcluster_create_command)
 
+    # Get master node of parallel cluster
     master_node = get_master_ec2_instance_id_from_pcluster_id(args.cluster_name)
 
-    log_success_message(ec2_instance=master_node)
+    # Print success message with master node
+    logger.info(log_success_message(ec2_instance=master_node))
 
 
 if __name__ == "__main__":
