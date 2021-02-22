@@ -1,0 +1,14 @@
+name: biotools
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - samtools=1.10
+  - bcftools=1.10
+  - picard=2.23
+  - snp-pileup=0.5.14
+  - vawk=0.0.2
+  - bedtools=2.26.0
+  - vcflib=1.0.0
+  - r-facets=0.5.14
