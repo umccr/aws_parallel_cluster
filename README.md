@@ -15,6 +15,20 @@ Head to our [wiki home page][wiki_home_page] for more information on getting sta
 
 ## Other announcements
 
+### Finding the IP/Domain addresses of a recently started cluster
+
+This will list the head node:
+
+```shell
+aws ec2 describe-instances --filters Name=tag:UseCase,Values=ParallelCluster Name=tag:Name,Values=ParallelCluster --query "Reservations[*].Instances[*].PublicDnsName"
+```
+
+And this will list all nodes, including the head node too:
+
+```shell
+aws ec2 describe-instances --filters Name=tag:UseCase,Values=ParallelCluster --query "Reservations[*].Instances[*].PublicDnsName"
+```
+
 ### Migration clean-up tips 
 
 If you've installed a version of parallel cluster prior to 29/01/2021 please run the following command.
